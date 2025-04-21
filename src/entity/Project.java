@@ -110,4 +110,8 @@ public class Project {
     public void setVisible(Boolean visible) {
         this.visible = visible;
     }
+
+    public boolean isVisible() {
+        return visible;
+    }
 }
