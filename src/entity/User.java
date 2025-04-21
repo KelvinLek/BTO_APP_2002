@@ -66,4 +66,12 @@ public class User {
         //TODO implement getAge
         return 0;
     }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
 }
