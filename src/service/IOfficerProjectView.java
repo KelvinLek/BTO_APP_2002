@@ -21,7 +21,7 @@ public interface IOfficerProjectView {
      * @return The Project object if found and the officer is assigned, null otherwise.
      * @throws SecurityException if the officer is not assigned to this project.
      */
-    Project viewAssignedProjectDetails(UUID projectId, HdbOfficer officer) throws SecurityException;
+    Project viewAssignedProjectDetails(String projectId, HdbOfficer officer) throws SecurityException;
 
     /**
      * Retrieves the list of projects the officer is currently assigned to and approved for.

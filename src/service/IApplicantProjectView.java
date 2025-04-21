@@ -6,7 +6,7 @@ import entity.User; // General user for filtering context if needed
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+
 
 /**
  * Defines project viewing capabilities specifically for Applicants.
@@ -34,7 +34,7 @@ public interface IApplicantProjectView {
      * @return The Project object, or null if not found or not accessible/eligible for this applicant.
      * @throws SecurityException if access is denied based on rules.
      */
-    Project viewApplicantProjectById(UUID projectId, Applicant applicant) throws SecurityException;
+    Project viewApplicantProjectById(String projectId, Applicant applicant) throws SecurityException;
 
     /**
      * Filters visible and eligible projects based on given criteria.

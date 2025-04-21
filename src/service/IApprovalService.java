@@ -28,3 +28,4 @@ public interface IApprovalService {
      */
     boolean processApplicationApproval(Application application, HdbManager manager, boolean approve) throws NoSuchElementException, IllegalStateException, Exception;
 // Renamed from approveApplication/rejectApplication for clarity
+}

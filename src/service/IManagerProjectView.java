@@ -5,7 +5,6 @@ import entity.Project;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * Defines project viewing capabilities specifically for HDB Managers.
@@ -36,7 +35,7 @@ public interface IManagerProjectView {
      * @param manager   The HdbManager performing the action (context).
      * @return The Project object, or null if not found.
      */
-    Project viewAnyProjectById(UUID projectId, HdbManager manager);
+    Project viewAnyProjectById(String projectId, HdbManager manager);
 
     /**
      * Filters all projects based on given criteria.

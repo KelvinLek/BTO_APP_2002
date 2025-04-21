@@ -5,7 +5,7 @@ import entity.HdbOfficer;
 import entity.Project; // Needed for context
 
 import java.util.List;
-import java.util.UUID;
+
 
 /**
  * Defines enquiry viewing capabilities specifically for HDB Officers.
@@ -21,7 +21,7 @@ public interface IOfficerEnquiryView {
      * @return A List of Enquiry objects for that project. Returns empty list if none found or officer not assigned.
      * @throws SecurityException if the officer is not assigned to this project.
      */
-    List<Enquiry> viewEnquiriesByAssignedProject(UUID projectId, HdbOfficer officer) throws SecurityException;
+    List<Enquiry> viewEnquiriesByAssignedProject(String projectId, HdbOfficer officer) throws SecurityException;
 
     /**
      * Retrieves a single enquiry by its ID, only if it belongs to a project the officer is assigned to.
