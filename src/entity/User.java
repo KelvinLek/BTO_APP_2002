@@ -3,6 +3,9 @@ package entity;
 import pub_enums.MaritalStatus;
 import pub_enums.Role;
 
+import java.time.LocalDate;
+import java.time.Period;
+import java.time.ZoneId;
 import java.util.Date;
 
 public class User {
@@ -62,9 +65,27 @@ public class User {
         this.password = password;
     }
 
-    public int getAge(){
-        //TODO implement getAge
-        return 0;
+    public int getAge() {
+        if (this.dob == null) {
+            return 0; // Return 0 if no date of birth is available
+        }
+        try {
+            // Convert java.util.Date to java.time.LocalDate
+            LocalDate birthDate = this.dob.toInstant()
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
+            LocalDate currentDate = LocalDate.now();
+
+            // Calculate the period between the birth date and current date
+            Period period = Period.between(birthDate, currentDate);
+
+            // Return the number of years from the period
+            return period.getYears();
+        } catch (Exception e) {
+            // Handle potential exceptions during date conversion or calculation
+            System.err.println("Error calculating age for user " + this.id + ": " + e.getMessage());
+            return 0; // Return 0 on error
+        }
     }
 
     public String getId() {
