@@ -5,10 +5,10 @@ import java.util.Date;
 public class Receipt {
     private String receiptId;
     private Date issuedDate;
-    private int projectId;
+    private String projectId;
     private String applicantId;
 
-    public Receipt(String receiptId, Date issuedDate, int projectId, String applicantId) {
+    public Receipt(String receiptId, Date issuedDate, String projectId, String applicantId) {
         this.receiptId = receiptId;
         this.issuedDate = issuedDate;
         this.projectId = projectId;
@@ -31,11 +31,11 @@ public class Receipt {
         this.issuedDate = issuedDate;
     }
 
-    public int getProjectId() {
+    public String getProjectId() {
         return projectId;
     }
 
-    public void setProjectId(int projectId) {
+    public void setProjectId(String projectId) {
         this.projectId = projectId;
     }
 
