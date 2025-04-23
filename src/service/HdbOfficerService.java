@@ -44,7 +44,7 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
 
         // 3. Update officer's status or log request (Implementation depends on how pending requests are tracked)
         // Option A: Set a generic status on the officer object
-        officer.setStatus("PENDING_REGISTRATION_" + project.getProjectId()); // Example status
+        officer.setStatus(OfficerStatus.PENDING); // Example status
 
         // Option B: Create a separate RegistrationRequest entity/record (more robust)
         // RegistrationRequest request = new RegistrationRequest(officer.getId(), project.getId(), "PENDING");
@@ -70,9 +70,8 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
 
         // Logic depends on how status is stored.
         // Option A: Check officer's general status field
-        String currentStatus = officer.getStatus();
-        String pendingMarker = "PENDING_REGISTRATION_" + project.getProjectId();
-        if (currentStatus != null && currentStatus.startsWith(pendingMarker)) {
+        OfficerStatus currentStatus = officer.getStatus();
+        if (currentStatus != null && currentStatus == OfficerStatus.PENDING) {
             return "Pending Registration";
         }
 

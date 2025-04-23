@@ -187,8 +187,8 @@ public class HdbManagerService extends ApplicantService implements IHdbManagerSe
         officer.getAssignedProjects().add(project);
 
         // Reset officer's status if previously pending
-        if (officer.getStatus() != null && officer.getStatus().startsWith("PENDING_REGISTRATION_" + projectId)) {
-            officer.setStatus("ASSIGNED");
+        if (officer.getStatus() != null && officer.getStatus() == OfficerStatus.PENDING){
+            officer.setStatus(OfficerStatus.ASSIGNED);
         }
 
         try {

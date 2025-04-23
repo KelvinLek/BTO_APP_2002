@@ -41,11 +41,11 @@ public class HdbOfficer extends Applicant{
         }
     }
 
-    public String getStatus() {
+    public OfficerStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(OfficerStatus status) {
         this.status = status;
     }
 }
