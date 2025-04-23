@@ -1,6 +1,9 @@
 package controller;
 
 import entity.User;
+import repository.ApplicantRepo;
+import repository.HdbOfficerRepo;
+import repository.HdbManagerRepo;
 import service.*; // Import required service interfaces/classes
 import java.util.NoSuchElementException;
 
@@ -33,21 +36,36 @@ public class UserController { // Removed 'abstract' as it might be instantiated 
      */
     public User handleLogin(String nric, String password) {
         try {
-            User user = authService.login(nric, password);
+            // Try applicant first
+            ApplicantRepo applicantRepo = new ApplicantRepo();
+            User user = applicantRepo.authenticate(nric, password);
             if (user != null) {
-                System.out.println("Login successful. Welcome " + user.getName() + "!");
-                // Check for default password and prompt change if needed
-                if ("password".equals(password)) {
-                    System.out.println("WARNING: You are using the default password. Please change it immediately.");
-                    // Optionally force password change here or let the role-specific controller handle it.
-                }
+                System.out.println("Login successful. Welcome Applicant " + user.getName() + "!");
                 return user;
-            } else {
-                System.out.println("Login failed. Please check your NRIC and password.");
-                return null;
             }
+
+            // Try officer next
+            HdbOfficerRepo officerRepo = new HdbOfficerRepo();
+            user = officerRepo.authenticate(nric, password);
+            if (user != null) {
+                System.out.println("Login successful. Welcome Officer " + user.getName() + "!");
+                return user;
+            }
+
+            // Try manager last
+            HdbManagerRepo managerRepo = new HdbManagerRepo();
+            user = managerRepo.authenticate(nric, password);
+            if (user != null) {
+                System.out.println("Login successful. Welcome Manager " + user.getName() + "!");
+                return user;
+            }
+
+            // If no match
+            System.out.println("Login failed. NRIC and password do not match any records.");
+            return null;
+
         } catch (Exception e) {
-            System.err.println("An unexpected error occurred during login: " + e.getMessage());
+            System.err.println("Unexpected error during login: " + e.getMessage());
             return null;
         }
     }
