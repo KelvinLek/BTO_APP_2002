@@ -1,2 +1,2 @@
-﻿Project Name,Neighborhood,Type 1,Number of units for Type 1,Selling price for Type 1,Type 2,Number of units for Type 2,Selling price for Type 2,Application opening date,Application closing date,Manager,Officer Slot,Officer
-Acacia Breeze,Yishun,2-Room,2,350000,3-Room,3,450000,15 02 2025,20 07 2025,Jessica,3,"Daniel,Emily"
+ProjectId|ProjectName|Visible|Neighbourhood|OpenDate|CloseDate|ManagerId|OfficerSlots|OfficerIds|Flats
+P001|Acacia Breeze|true|Yishun|15 02 2025|20 07 2025|NULL|3|S6543210I|298a398e-eb4c-461e-b96c-52f8370c8698:TWOROOM;9154f3ba-6d0a-4092-b2bc-f90796a93be2:THREEROOM

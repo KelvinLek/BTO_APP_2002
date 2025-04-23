@@ -2,20 +2,148 @@ package service;
 
 import entity.*;
 import pub_enums.*;
-import util.PlaceholderDataUtil;
+import repository.*;
 
 import java.util.*;
 
-public class HdbManagerService extends ApplicantService implements IHdbManagerService, IManagerProjectView, IManagerEnquiryView, IApprovalService, IWithdrawalApprovalService, IReportService {
+/**
+ * Provides services specific to HDB Managers, handling project management,
+ * officer assignment, and application approval.
+ */
+public class HdbManagerService extends UserService implements IProjectView, IReportService {
 
-    // Basic constructor
-    public HdbManagerService() {
-        super(); // Rely on the parent's default constructor
+    private HdbManagerRepo managerRepo;
+    private ProjectRepo projectRepo;
+    private ApplicationRepo applicationRepo;
+    private EnquiryRepo enquiryRepo;
+    private HdbOfficerRepo officerRepo;
+
+    public HdbManagerService(HdbManagerRepo managerRepo, ProjectRepo projectRepo, 
+                            ApplicationRepo applicationRepo, EnquiryRepo enquiryRepo,
+                            HdbOfficerRepo officerRepo) {
+        super();
+        this.managerRepo = managerRepo;
+        this.projectRepo = projectRepo;
+        this.applicationRepo = applicationRepo;
+        this.enquiryRepo = enquiryRepo;
+        this.officerRepo = officerRepo;
     }
 
-    // --- IHdbManagerService Implementation ---
+    // --- IProjectView Implementation ---
 
+    /**
+     * Retrieves the details of any project by its ID, regardless of visibility.
+     *
+     * @param projectId The ID of the project.
+     * @param user The User viewing the project.
+     * @return The Project object or null.
+     */
     @Override
+    public Project viewProjectById(String projectId, User user) {
+        if (projectId == null || user == null || !(user instanceof HdbManager)) return null;
+        
+        // Managers can view any project
+        return projectRepo.findById(projectId).orElse(null);
+    }
+
+    /**
+     * Filters all projects based on given criteria.
+     *
+     * @param filters Map of filter criteria.
+     * @param user The User performing the filter.
+     * @return List of matching projects.
+     */
+    @Override
+    public List<Project> filterAllProjects(Map<String, String> filters, User user) {
+        if (!(user instanceof HdbManager)) return Collections.emptyList();
+        HdbManager manager = (HdbManager) user;
+        
+        List<Project> allProjects = filters.containsKey("onlymanaged") && 
+                                    "true".equalsIgnoreCase(filters.get("onlymanaged")) ?
+                                    viewProjectsByUser(user) : // Only manager's projects
+                                    projectRepo.findAll();     // All projects
+        
+        if (filters == null || filters.isEmpty()) {
+            return allProjects;
+        }
+
+        List<Project> filteredList = new ArrayList<>();
+        for (Project project : allProjects) {
+            boolean match = true;
+            for (Map.Entry<String, String> entry : filters.entrySet()) {
+                String key = entry.getKey().toLowerCase();
+                String value = entry.getValue();
+                if (value == null || value.trim().isEmpty() || key.equals("onlymanaged")) continue; // Skip empty filters
+
+                switch (key) {
+                    case "neighbourhood":
+                        if (project.getNeighbourhood() == null || !project.getNeighbourhood().equalsIgnoreCase(value)) {
+                            match = false;
+                        }
+                        break;
+                    case "flattype": // Check if project offers this flat type
+                        try {
+                            FlatType requestedType = FlatType.valueOf(value.toUpperCase());
+                            boolean offersType = false;
+                            if(project.getFlats() != null){
+                                for(Flat flat : project.getFlats()){
+                                    if(flat.getFlatType() == requestedType){
+                                        offersType = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if(!offersType) match = false;
+                        } catch (IllegalArgumentException e) {
+                            match = false; // Invalid flat type string
+                        }
+                        break;
+                    case "projectname":
+                    case "name":
+                        if (project.getProjName() == null || !project.getProjName().toLowerCase().contains(value.toLowerCase())) {
+                            match = false;
+                        }
+                        break;
+                    case "visible":
+                        boolean visibleFilter = "true".equalsIgnoreCase(value) || "yes".equalsIgnoreCase(value);
+                        if (project.isVisible() != visibleFilter) {
+                            match = false;
+                        }
+                        break;
+                    default:
+                        // Ignore unknown filter keys
+                        break;
+                }
+                if (!match) break; // Stop checking filters for this project if one fails
+            }
+            if (match) {
+                filteredList.add(project);
+            }
+        }
+        return filteredList;
+    }
+
+    /**
+     * Retrieves all projects managed by the manager.
+     *
+     * @param user The User viewing the projects.
+     * @return List of projects.
+     */
+    @Override
+    public List<Project> viewProjectsByUser(User user) {
+        if (!(user instanceof HdbManager)) return Collections.emptyList();
+        HdbManager manager = (HdbManager) user;
+        
+        return projectRepo.findByManagerId(manager.getId());
+    }
+
+    /**
+     * Creates a new project.
+     * 
+     * @param manager The manager creating the project.
+     * @param projectDetails Map of project details.
+     * @return The created Project object.
+     */
     public Project createProject(HdbManager manager, Map<String, Object> projectDetails) {
         if (manager == null || projectDetails == null) {
             throw new IllegalArgumentException("Manager and project details must be provided");
@@ -45,31 +173,41 @@ public class HdbManagerService extends ApplicantService implements IHdbManagerSe
         // Initialize flat lists
         List<Flat> flats = new ArrayList<>();
         if (units2Room != null && units2Room > 0) {
-            flats.add(new Flat(FlatType.TWOROOM, units2Room, units2Room, 150000));
+            flats.add(new Flat(FlatType.TWOROOM, units2Room, units2Room, 300000.0));
         }
         if (units3Room != null && units3Room > 0) {
-            flats.add(new Flat(FlatType.THREEROOM, units3Room, units3Room, 300000));
+            flats.add(new Flat(FlatType.THREEROOM, units3Room, units3Room, 400000.0));
         }
 
         // Generate project ID
         String projectId = "P" + String.format("%04d", (int)(Math.random() * 10000));
 
-        // Create new project with minimal constructor and set additional properties
-        Project newProject = new Project(name, projectId, neighbourhood, startDate, endDate, manager, null);
-        newProject.setFlats(flats);
-        newProject.setVisible(isVisible != null ? isVisible : false);
-        newProject.setOfficerSlots(slots != null ? slots : 5);
+        // Create new project
+        Project newProject = new Project(
+                name,
+                projectId,
+                isVisible != null ? isVisible : false,
+                neighbourhood,
+                flats,
+                startDate,
+                endDate,
+                manager,
+                new ArrayList<>(),
+                slots != null ? slots : 5
+        );
 
-        try {
-            PlaceholderDataUtil.saveProjectPlaceholder(newProject);
-            return newProject;
-        } catch (Exception e) {
-            System.err.println("Error creating project: " + e.getMessage());
-            throw new RuntimeException("Failed to create project", e);
-        }
+        projectRepo.add(newProject);
+        return newProject;
     }
 
-    @Override
+    /**
+     * Updates an existing project.
+     * 
+     * @param manager The manager updating the project.
+     * @param project The project to update.
+     * @param updates Map of updates to apply.
+     * @return true if successful, false otherwise.
+     */
     public boolean updateProject(HdbManager manager, Project project, Map<String, Object> updates) {
         if (manager == null || project == null || updates == null) {
             return false;
@@ -77,7 +215,7 @@ public class HdbManagerService extends ApplicantService implements IHdbManagerSe
 
         // Verify manager owns the project
         if (project.getManager() == null || !project.getManager().getId().equals(manager.getId())) {
-            throw new SecurityException("Manager does not have authority to update this project");
+            return false; // Not authorized
         }
 
         // Apply updates
@@ -117,45 +255,42 @@ public class HdbManagerService extends ApplicantService implements IHdbManagerSe
             project.setOfficerSlots((Integer) updates.get("officerSlots"));
         }
 
-        try {
-            PlaceholderDataUtil.saveProjectPlaceholder(project);
-            return true;
-        } catch (Exception e) {
-            System.err.println("Error updating project: " + e.getMessage());
-            return false;
-        }
+        projectRepo.update(project);
+        return true;
     }
 
-    @Override
+    /**
+     * Assigns an officer to a project.
+     * 
+     * @param manager The manager assigning the officer.
+     * @param officerId The ID of the officer to assign.
+     * @param projectId The ID of the project to assign to.
+     * @return true if successful, false otherwise.
+     */
     public boolean assignOfficer(HdbManager manager, String officerId, String projectId) {
-        // Find the user (officer)
-        User user = PlaceholderDataUtil.findUserByNricPlaceholder(officerId);
-        if (user == null || !(user instanceof HdbOfficer)) {
-            System.out.println("Invalid officer ID or user is not an officer");
-            return false;
+        // Find the officer
+        Optional<HdbOfficer> optOfficer = officerRepo.findById(officerId);
+        if (!optOfficer.isPresent()) {
+            return false; // Officer not found
         }
+        HdbOfficer officer = optOfficer.get();
 
         // Find the project
-        Project project = PlaceholderDataUtil.findProjectByIdPlaceholder(projectId);
-        if (project == null) {
-            System.out.println("Project not found");
-            return false;
+        Optional<Project> optProject = projectRepo.findById(projectId);
+        if (!optProject.isPresent()) {
+            return false; // Project not found
         }
+        Project project = optProject.get();
 
         // Verify manager owns the project
         if (project.getManager() == null || !project.getManager().getId().equals(manager.getId())) {
-            System.out.println("Manager does not have authority to assign officers to this project");
-            return false;
+            return false; // Not authorized
         }
-
-        // Cast to HdbOfficer
-        HdbOfficer officer = (HdbOfficer) user;
 
         // Check if officer slots are available
         int assignedCount = (project.getOfficers() != null) ? project.getOfficers().size() : 0;
         if (assignedCount >= project.getOfficerSlots()) {
-            System.out.println("Project has reached maximum officer slots");
-            return false;
+            return false; // No slots available
         }
 
         // Initialize officers list if null
@@ -164,383 +299,255 @@ public class HdbManagerService extends ApplicantService implements IHdbManagerSe
         }
 
         // Check if officer is already assigned
-        boolean alreadyAssigned = false;
         for (HdbOfficer existingOfficer : project.getOfficers()) {
             if (existingOfficer.getId().equals(officerId)) {
-                alreadyAssigned = true;
-                break;
+                return true; // Already assigned
             }
-        }
-
-        if (alreadyAssigned) {
-            System.out.println("Officer is already assigned to this project");
-            return false;
         }
 
         // Add officer to project
         project.getOfficers().add(officer);
 
-        // Add project to officer's assigned projects
-        if (officer.getAssignedProjects() == null) {
-            officer.setAssignedProjects(new ArrayList<>());
-        }
-        officer.getAssignedProjects().add(project);
+        // Update officer status
+        officer.setStatus(OfficerStatus.ASSIGNED);
 
-        // Reset officer's status if previously pending
-        if (officer.getStatus() != null && officer.getStatus() == OfficerStatus.PENDING){
-            officer.setStatus(OfficerStatus.ASSIGNED);
-        }
-
-        try {
-            PlaceholderDataUtil.saveProjectPlaceholder(project);
-            PlaceholderDataUtil.saveUserPlaceholder(officer);
-            return true;
-        } catch (Exception e) {
-            System.err.println("Error assigning officer: " + e.getMessage());
-            return false;
-        }
+        // Save changes
+        projectRepo.update(project);
+        officerRepo.update(officer);
+        
+        return true;
     }
 
-    @Override
+    /**
+     * Updates the status of an application.
+     * 
+     * @param manager The manager updating the status.
+     * @param applicationId The ID of the application to update.
+     * @param newStatus The new status to set.
+     * @return true if successful, false otherwise.
+     */
     public boolean updateApplicationStatus(HdbManager manager, String applicationId, ApplStatus newStatus) {
         // Find the application
-        Application application = PlaceholderDataUtil.findApplicationByIdPlaceholder(applicationId);
-        if (application == null) {
-            System.out.println("Application not found");
-            return false;
+        Optional<Application> optApp = applicationRepo.findById(applicationId);
+        if (!optApp.isPresent()) {
+            return false; // Application not found
         }
+        Application application = optApp.get();
 
         // Find the project
-        Project project = PlaceholderDataUtil.findProjectByIdPlaceholder(application.getProjectId());
-        if (project == null) {
-            System.out.println("Project not found");
-            return false;
+        Optional<Project> optProject = projectRepo.findById(application.getProjectId());
+        if (!optProject.isPresent()) {
+            return false; // Project not found
         }
+        Project project = optProject.get();
 
         // Verify manager owns the project
         if (project.getManager() == null || !project.getManager().getId().equals(manager.getId())) {
-            System.out.println("Manager does not have authority to update applications for this project");
-            return false;
+            return false; // Not authorized
         }
 
         // Update status
         application.setStatus(newStatus);
-
-        try {
-            PlaceholderDataUtil.saveApplicationPlaceholder(application);
-            System.out.println("Application status updated to " + newStatus);
-
-            // Notify the applicant of the status change
-            // notificationService.notifyApplicant(application.getApplicantId(), "Your application status has been updated to " + newStatus);
-
-            return true;
-        } catch (Exception e) {
-            System.err.println("Error updating application status: " + e.getMessage());
-            return false;
-        }
+        applicationRepo.update(application);
+        
+        return true;
     }
 
-    @Override
+    /**
+     * Approves a withdrawal request.
+     * 
+     * @param manager The manager approving the withdrawal.
+     * @param applicationId The ID of the application to withdraw.
+     * @return true if successful, false otherwise.
+     */
     public boolean approveWithdrawal(HdbManager manager, String applicationId) {
         // Find the application
-        Application application = PlaceholderDataUtil.findApplicationByIdPlaceholder(applicationId);
-        if (application == null) {
-            System.out.println("Application not found");
-            return false;
+        Optional<Application> optApp = applicationRepo.findById(applicationId);
+        if (!optApp.isPresent()) {
+            return false; // Application not found
         }
+        Application application = optApp.get();
 
         // Check if application is in WITHDRAW_PENDING status
         if (application.getStatus() != ApplStatus.WITHDRAW_PENDING) {
-            System.out.println("Application is not pending withdrawal");
-            return false;
+            return false; // Not pending withdrawal
         }
 
         // Find the project
-        Project project = PlaceholderDataUtil.findProjectByIdPlaceholder(application.getProjectId());
-        if (project == null) {
-            System.out.println("Project not found");
-            return false;
+        Optional<Project> optProject = projectRepo.findById(application.getProjectId());
+        if (!optProject.isPresent()) {
+            return false; // Project not found
         }
+        Project project = optProject.get();
 
         // Verify manager owns the project
         if (project.getManager() == null || !project.getManager().getId().equals(manager.getId())) {
-            System.out.println("Manager does not have authority to approve withdrawals for this project");
-            return false;
+            return false; // Not authorized
         }
 
         // Update status to WITHDRAW_APPROVED
         application.setStatus(ApplStatus.WITHDRAW_APPROVED);
-
-        try {
-            PlaceholderDataUtil.saveApplicationPlaceholder(application);
-            System.out.println("Withdrawal approved for application " + applicationId);
-
-            // If application was already in BOOKED status, increase available flat count
-            if (application.getStatus() == ApplStatus.BOOKED && project.getFlats() != null) {
-                FlatType flatType;
-                try {
-                    flatType = FlatType.valueOf(application.getFlatType());
-                } catch (IllegalArgumentException e) {
-                    flatType = null;
-                }
-
-                if (flatType != null) {
-                    for (Flat flat : project.getFlats()) {
-                        if (flat.getFlatType() == flatType) {
-                            flat.setRemaining(flat.getRemaining() + 1); // Return one flat to available pool
-                            break;
-                        }
-                    }
-                    PlaceholderDataUtil.saveProjectPlaceholder(project); // Save updated flat counts
-                }
-            }
-
-            // Notify the applicant of the approval
-            // notificationService.notifyApplicant(application.getApplicantId(), "Your withdrawal request has been approved");
-
-            return true;
-        } catch (Exception e) {
-            System.err.println("Error approving withdrawal: " + e.getMessage());
-            return false;
-        }
+        applicationRepo.update(application);
+        
+        return true;
     }
 
-    @Override
-    public List<Project> viewProjectsByManager(HdbManager manager) {
-        if (manager == null) {
-            return Collections.emptyList();
+    /**
+     * Rejects a withdrawal request.
+     * 
+     * @param manager The manager rejecting the withdrawal.
+     * @param applicationId The ID of the application.
+     * @return true if successful, false otherwise.
+     */
+    public boolean rejectWithdrawal(HdbManager manager, String applicationId) {
+        // Find the application
+        Optional<Application> optApp = applicationRepo.findById(applicationId);
+        if (!optApp.isPresent()) {
+            return false; // Application not found
         }
-
-        List<Project> allProjects = PlaceholderDataUtil.findAllProjectsPlaceholder();
-        List<Project> managerProjects = new ArrayList<>();
-
-        for (Project project : allProjects) {
-            if (project.getManager() != null && project.getManager().getId().equals(manager.getId())) {
-                managerProjects.add(project);
-            }
-        }
-
-        return managerProjects;
-    }
-
-    @Override
-    public List<Project> filterAllProjects(Map<String, String> filters, HdbManager manager) {
-        List<Project> allProjects = manager != null ?
-                viewProjectsByManager(manager) : // Only manager's projects
-                PlaceholderDataUtil.findAllProjectsPlaceholder();     // All projects
-
-        if (filters == null || filters.isEmpty()) {
-            return allProjects;
-        }
-
-        List<Project> filteredProjects = new ArrayList<>();
-
-        for (Project project : allProjects) {
-            boolean matches = true;
-
-            for (Map.Entry<String, String> filter : filters.entrySet()) {
-                String key = filter.getKey().toLowerCase();
-                String value = filter.getValue();
-
-                if (value == null || value.trim().isEmpty()) {
-                    continue; // Skip empty filters
-                }
-
-                switch (key) {
-                    case "name":
-                    case "projectname":
-                        if (project.getProjName() == null || !project.getProjName().toLowerCase().contains(value.toLowerCase())) {
-                            matches = false;
-                        }
-                        break;
-                    case "neighbourhood":
-                        if (project.getNeighbourhood() == null || !project.getNeighbourhood().equalsIgnoreCase(value)) {
-                            matches = false;
-                        }
-                        break;
-                    case "visible":
-                        boolean visibleFilter = "true".equalsIgnoreCase(value) || "yes".equalsIgnoreCase(value);
-                        if (project.isVisible() != visibleFilter) {
-                            matches = false;
-                        }
-                        break;
-                    // Add more filter types as needed
-                }
-
-                if (!matches) {
-                    break; // No need to check more filters
-                }
-            }
-
-            if (matches) {
-                filteredProjects.add(project);
-            }
-        }
-
-        return filteredProjects;
-    }
-
-    // --- IEnquiryViewable & IManagerEnquiryView Implementation ---
-
-    @Override
-    public List<Enquiry> viewEnquiriesByProject(UUID projectId, HdbManager manager) {
-        if (projectId == null) {
-            return Collections.emptyList();
-        }
-
-        // Find project to verify manager authority
-        Project project = PlaceholderDataUtil.findProjectByIdPlaceholder(projectId.toString());
-        if (project == null) {
-            return Collections.emptyList();
-        }
-
-        // Verify manager owns the project
-        if (manager != null && project.getManager() != null && !project.getManager().getId().equals(manager.getId())) {
-            throw new SecurityException("Manager does not have authority to view enquiries for this project");
-        }
-
-        return PlaceholderDataUtil.findEnquiriesByProjectPlaceholder(projectId.toString());
-    }
-
-    @Override
-    public Project viewAnyProjectById(String projectId, HdbManager manager) {
-        // Managers can view any project
-        return PlaceholderDataUtil.findProjectByIdPlaceholder(projectId);
-    }
-
-    @Override
-    public Enquiry viewAnyEnquiryById(String enquiryId, HdbManager manager) {
-        // Managers can view any enquiry
-        // Implementation of IManagerEnquiryView method
-        return PlaceholderDataUtil.findEnquiryByIdPlaceholder(enquiryId);
-    }
-
-    @Override
-    public List<Enquiry> viewAllEnquiries(HdbManager manager) {
-        // Implementation of IManagerEnquiryView method
-        List<Enquiry> allEnquiries = new ArrayList<>();
-        // Collect enquiries from all projects
-        for (Project project : PlaceholderDataUtil.findAllProjectsPlaceholder()) {
-            allEnquiries.addAll(PlaceholderDataUtil.findEnquiriesByProjectPlaceholder(project.getProjectId()));
-        }
-        return allEnquiries;
-    }
-
-    // Implement missing IManagerProjectView method
-    @Override
-    public List<Project> viewAllProjects(HdbManager manager) {
-        // Return all projects (ignore manager parameter)
-        return PlaceholderDataUtil.findAllProjectsPlaceholder();
-    }
-
-    // --- IApprovalService Implementation ---
-    @Override
-    public boolean processApplicationApproval(Application application, HdbManager manager, boolean approve) {
-        // Implement the method to avoid abstract class error
-        if (application == null || manager == null) {
-            return false;
-        }
-
-        try {
-            // Update application status based on approval decision
-            if (approve) {
-                application.setStatus(ApplStatus.SUCCESS);
-                System.out.println("Application " + application.getId() + " approved successfully");
-            } else {
-                application.setStatus(ApplStatus.REJECT);
-                System.out.println("Application " + application.getId() + " rejected");
-            }
-
-            // Save changes
-            PlaceholderDataUtil.saveApplicationPlaceholder(application);
-            return true;
-        } catch (Exception e) {
-            System.err.println("Error processing application approval: " + e.getMessage());
-            return false;
-        }
-    }
-
-    // --- IWithdrawalApprovalService Implementation ---
-    @Override
-    public boolean rejectWithdrawal(Application application, HdbManager manager) {
-        if (application == null || manager == null) {
-            return false;
-        }
+        Application application = optApp.get();
 
         // Check if application is in WITHDRAW_PENDING status
         if (application.getStatus() != ApplStatus.WITHDRAW_PENDING) {
-            System.out.println("Application is not pending withdrawal");
-            return false;
+            return false; // Not pending withdrawal
         }
 
-        try {
-            // Revert to previous status (assumed to be PENDING for simplicity)
-            application.setStatus(ApplStatus.PENDING);
-            PlaceholderDataUtil.saveApplicationPlaceholder(application);
-            System.out.println("Withdrawal request rejected for application " + application.getId());
-            return true;
-        } catch (Exception e) {
-            System.err.println("Error rejecting withdrawal: " + e.getMessage());
-            return false;
+        // Find the project
+        Optional<Project> optProject = projectRepo.findById(application.getProjectId());
+        if (!optProject.isPresent()) {
+            return false; // Project not found
         }
-    }
+        Project project = optProject.get();
 
-    @Override
-    public boolean approveWithdrawal(Application application, HdbManager manager) throws NoSuchElementException, Exception {
-        // Delegate to the existing implementation
-        return approveWithdrawal(manager, application.getId());
-    }
+        // Verify manager owns the project
+        if (project.getManager() == null || !project.getManager().getId().equals(manager.getId())) {
+            return false; // Not authorized
+        }
 
-    // Convenience method for controller
-    public List<Application> findApplicationsByStatusPlaceholder(ApplStatus status) {
-        return PlaceholderDataUtil.findApplicationsByStatusPlaceholder(status);
+        // Revert to previous status (PENDING)
+        application.setStatus(ApplStatus.PENDING);
+        applicationRepo.update(application);
+        
+        return true;
     }
 
     /**
-     * Finds an officer by their NRIC.
-     * @param nric The NRIC of the officer to find
-     * @return The HdbOfficer if found, null otherwise
+     * Finds applications by their status.
+     * 
+     * @param status The status to find.
+     * @return List of matching applications.
      */
-    public HdbOfficer findOfficerByNric(String nric) {
-        if (nric == null || nric.trim().isEmpty()) {
-            return null;
+    public List<Application> findApplicationsByStatus(ApplStatus status) {
+        List<Application> allApps = applicationRepo.findAll();
+        List<Application> matchingApps = new ArrayList<>();
+        
+        for (Application app : allApps) {
+            if (app.getStatus() == status) {
+                matchingApps.add(app);
+            }
         }
-
-        User user = PlaceholderDataUtil.findUserByNricPlaceholder(nric);
-        if (user != null && user instanceof HdbOfficer) {
-            return (HdbOfficer) user;
-        }
-        return null;
+        
+        return matchingApps;
     }
 
     /**
-     * Finds an application by its ID.
-     * @param applicationId The ID of the application to find
-     * @return The Application if found, null otherwise
+     * Processes an application for approval or rejection.
+     * 
+     * @param applicationId The ID of the application to process.
+     * @param manager The manager processing the application.
+     * @param approve true to approve, false to reject.
+     * @return true if successful, false otherwise.
      */
-    public Application findApplicationById(String applicationId) {
-        if (applicationId == null || applicationId.trim().isEmpty()) {
-            return null;
+    public boolean processApplication(String applicationId, HdbManager manager, boolean approve) {
+        // Find the application
+        Optional<Application> optApp = applicationRepo.findById(applicationId);
+        if (!optApp.isPresent()) {
+            return false; // Application not found
         }
-
-        return PlaceholderDataUtil.findApplicationByIdPlaceholder(applicationId);
-    }
-
-    /**
-     * Finds a user by their NRIC.
-     * @param nric The NRIC of the user to find
-     * @return The User if found, null otherwise
-     */
-    public User findUserByNricPlaceholder(String nric) {
-        return PlaceholderDataUtil.findUserByNricPlaceholder(nric);
+        Application application = optApp.get();
+        
+        // Find the project
+        Optional<Project> optProject = projectRepo.findById(application.getProjectId());
+        if (!optProject.isPresent()) {
+            return false; // Project not found
+        }
+        Project project = optProject.get();
+        
+        // Verify manager owns the project
+        if (project.getManager() == null || !project.getManager().getId().equals(manager.getId())) {
+            return false; // Not authorized
+        }
+        
+        // Process application
+        if (approve) {
+            application.setStatus(ApplStatus.SUCCESS);
+        } else {
+            application.setStatus(ApplStatus.REJECT);
+        }
+        
+        applicationRepo.update(application);
+        return true;
     }
 
     // --- IReportService Implementation ---
+
+    /**
+     * Generates a booking report based on specified filters.
+     *
+     * @param filters Map of filter criteria.
+     * @return List of report data.
+     */
     @Override
-    public List<Object> generateBookingReport(Map<String, String> filters) throws Exception {
-        // Simple implementation to satisfy the interface
-        List<Object> reportItems = new ArrayList<>();
-        // In a real implementation, we would query applications or receipts based on filters
-        return reportItems;
+    public List<Object> generateBookingReport(Map<String, String> filters) {
+        List<Object> reportData = new ArrayList<>();
+        
+        // Collect all applications
+        List<Application> applications = applicationRepo.findAll();
+        
+        // Apply filters
+        if (filters != null && !filters.isEmpty()) {
+            // Filter by status if specified
+            if (filters.containsKey("status")) {
+                try {
+                    ApplStatus status = ApplStatus.valueOf(filters.get("status").toUpperCase());
+                    applications = applications.stream()
+                            .filter(app -> app.getStatus() == status)
+                            .collect(java.util.stream.Collectors.toList());
+                } catch (IllegalArgumentException e) {
+                    // Invalid status, ignore filter
+                }
+            }
+            
+            // Filter by project if specified
+            if (filters.containsKey("projectId")) {
+                String projectId = filters.get("projectId");
+                applications = applications.stream()
+                        .filter(app -> app.getProjectId().equals(projectId))
+                        .collect(java.util.stream.Collectors.toList());
+            }
+            
+            // Add more filters as needed
+        }
+        
+        // Transform applications to report data
+        for (Application app : applications) {
+            Map<String, Object> reportItem = new HashMap<>();
+            reportItem.put("applicationId", app.getId());
+            reportItem.put("applicantId", app.getApplicantId());
+            reportItem.put("projectId", app.getProjectId());
+            reportItem.put("status", app.getStatus().name());
+            reportItem.put("flatType", app.getFlatType());
+            
+            // Add project details if available
+            Project project = projectRepo.findById(app.getProjectId()).orElse(null);
+            if (project != null) {
+                reportItem.put("projectName", project.getProjName());
+                reportItem.put("neighbourhood", project.getNeighbourhood());
+            }
+            
+            reportData.add(reportItem);
+        }
+        
+        return reportData;
     }
 }

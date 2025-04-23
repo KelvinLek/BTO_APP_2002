@@ -1,39 +1,37 @@
 package service;
 
 import entity.Applicant;
-import entity.Project; // Needed for context
+import entity.User;
+import entity.Project;
 import pub_enums.FlatType;
 
 import java.util.NoSuchElementException;
 
 /**
  * Defines the contract for checking applicant eligibility for BTO projects/flats.
- * This logic might be better embedded within IApplicantService.applyForProject,
- * but defined separately as per the BTO_App_2 structure.
  */
 public interface IEligibilityCheck {
 
     /**
-     * Checks if a given applicant is eligible to apply for a specific flat type
-     * based on the rules in the assignment brief (age, marital status).
+     * Checks if a given user is eligible to apply for a specific flat type
+     * based on the rules (age, marital status).
      *
-     * @param applicant The Applicant whose eligibility is being checked.
-     * @param flatType  The FlatType being considered.
-     * @return true if the applicant is eligible for the flat type, false otherwise.
-     * @throws NoSuchElementException if applicant data is missing or invalid.
+     * @param user The User (typically Applicant) whose eligibility is being checked.
+     * @param flatType The FlatType being considered.
+     * @return true if the user is eligible for the flat type, false otherwise.
+     * @throws NoSuchElementException if user data is missing or invalid.
      */
-    boolean checkEligibility(Applicant applicant, FlatType flatType) throws NoSuchElementException;
+    boolean checkEligibility(User user, FlatType flatType) throws NoSuchElementException;
 
     /**
-     * Checks if an applicant is eligible to apply for a specific project,
+     * Checks if a user is eligible to apply for a specific project,
      * considering their eligibility for *any* flat type offered by the project.
-     * Also checks if the applicant already has an active application.
+     * Also checks if they already have an active application.
      *
-     * @param applicant The Applicant.
-     * @param project   The Project.
+     * @param user The User (typically Applicant).
+     * @param project The Project.
      * @return true if eligible to apply for the project, false otherwise.
-     * @throws NoSuchElementException if applicant or project data is invalid.
+     * @throws NoSuchElementException if user or project data is invalid.
      */
-    boolean checkProjectApplicationEligibility(Applicant applicant, Project project) throws NoSuchElementException;
-
+    boolean checkEligibility(User user, Project project) throws NoSuchElementException;
 }

@@ -4,25 +4,17 @@ import entity.User;
 import java.util.NoSuchElementException;
 
 /**
- * Defines the contract for services related to changing user passwords.
- * Separated according to ISP, focusing solely on password modification.
+ * Defines the contract for password management services.
  */
 public interface IPasswordService {
 
     /**
-     * Changes the password for the specified user.
-     * Implementations should find the user and update their password securely.
+     * Changes the password for a specific user.
      *
-     * @param user        The User object whose password needs changing.
+     * @param user The user whose password needs to be changed.
      * @param newPassword The new password to set.
-     * @return true if the password was changed successfully, false otherwise (e.g., validation failed).
-     * @throws NoSuchElementException if the user object provided is invalid or not found in the data store.
-     * @throws Exception              for underlying persistence errors.
+     * @return true if the password was changed successfully, false otherwise.
+     * @throws NoSuchElementException if the user is not found.
      */
-    boolean changePassword(User user, String newPassword) throws NoSuchElementException, Exception; // Changed signature to take User object
-
-    // Note: Original IUserService also had changePassword. This separate interface
-    // adheres more strictly to ISP if only password changing is needed.
-    // The UserService class can implement both. Consider if the User parameter
-    // is better than userId depending on how user context is managed.
+    boolean changePassword(User user, String newPassword) throws NoSuchElementException;
 }

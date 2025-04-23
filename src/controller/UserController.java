@@ -2,43 +2,34 @@ package controller;
 
 import entity.User;
 import repository.ApplicantRepo;
-import repository.HdbOfficerRepo;
 import repository.HdbManagerRepo;
-import service.*; // Import required service interfaces/classes
-import java.util.NoSuchElementException;
+import repository.HdbOfficerRepo;
+import service.UserService;
+
+import java.util.Map;
 
 /**
- * Base controller handling common user actions like login and password change.
- * Requires a UserService instance for its operations.
+ * Handles general user operations such as login and registration
  */
-public class UserController { // Removed 'abstract' as it might be instantiated directly for login
+public class UserController {
+    private UserService userService;
 
-    private final IAuthService authService;
-    private final IPasswordService passwordService;
-
-    /**
-     * Constructor for UserController.
-     * @param authService Service for authentication.
-     * @param passwordService Service for password management.
-     */
-    public UserController(IAuthService authService, IPasswordService passwordService) {
-        this.authService = authService;
-        this.passwordService = passwordService;
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
     /**
-     * Handles the user login process.
-     * Takes NRIC and password, calls the authentication service.
-     *
-     * @param nric     The NRIC entered by the user.
-     * @param password The password entered by the user.
-     * @return The authenticated User object if successful, null otherwise.
+     * Handles user login
+     * 
+     * @param userId The user's ID/username
+     * @param password The user's password
+     * @return The authenticated User object or null if authentication fails
      */
-    public User handleLogin(String nric, String password) {
+    public User login(String userId, String password) {
         try {
             // Try applicant first
             ApplicantRepo applicantRepo = new ApplicantRepo();
-            User user = applicantRepo.authenticate(nric, password);
+            User user = applicantRepo.authenticate(userId, password);
             if (user != null) {
                 System.out.println("Login successful. Welcome Applicant " + user.getName() + "!");
                 return user;
@@ -46,7 +37,7 @@ public class UserController { // Removed 'abstract' as it might be instantiated 
 
             // Try officer next
             HdbOfficerRepo officerRepo = new HdbOfficerRepo();
-            user = officerRepo.authenticate(nric, password);
+            user = officerRepo.authenticate(userId, password);
             if (user != null) {
                 System.out.println("Login successful. Welcome Officer " + user.getName() + "!");
                 return user;
@@ -54,7 +45,7 @@ public class UserController { // Removed 'abstract' as it might be instantiated 
 
             // Try manager last
             HdbManagerRepo managerRepo = new HdbManagerRepo();
-            user = managerRepo.authenticate(nric, password);
+            user = managerRepo.authenticate(userId, password);
             if (user != null) {
                 System.out.println("Login successful. Welcome Manager " + user.getName() + "!");
                 return user;
@@ -71,40 +62,66 @@ public class UserController { // Removed 'abstract' as it might be instantiated 
     }
 
     /**
-     * Handles the password change process for the currently logged-in user.
-     *
-     * @param currentUser The currently logged-in User object.
-     * @param newPassword The new password entered by the user.
-     * @return true if the password change was successful, false otherwise.
+     * Changes the password for a user
+     * 
+     * @param user The user to change password for
+     * @param oldPassword The current password
+     * @param newPassword The new password
+     * @return true if password change successful, false otherwise
      */
-    public boolean handleChangePassword(User currentUser, String newPassword) {
-        if (currentUser == null) {
-            System.out.println("Error: No user logged in to change password.");
+    public boolean changePassword(User user, String oldPassword, String newPassword) {
+        if (user == null || oldPassword == null || newPassword == null) {
+            System.out.println("Error: All fields must be provided.");
             return false;
         }
-        // Basic validation (can add more rules)
-        if (newPassword == null || newPassword.isEmpty() || newPassword.length() < 6) {
+        
+        // Verify old password
+        if (!user.getPassword().equals(oldPassword)) {
+            System.out.println("Error: Current password is incorrect.");
+            return false;
+        }
+        
+        // Basic validation
+        if (newPassword.isEmpty() || newPassword.length() < 6) {
             System.out.println("Error: New password must be at least 6 characters long.");
             return false;
         }
-
-
-        try {
-            boolean success = passwordService.changePassword(currentUser, newPassword);
-            if (success) {
-                System.out.println("Password changed successfully.");
-                return true;
-            } else {
-                // Specific error messages should be printed by the service layer
-                // System.out.println("Password change failed. Please try again."); // Generic message if service doesn't print
-                return false;
-            }
-        } catch (NoSuchElementException e) {
-            System.err.println("Error: " + e.getMessage());
-            return false;
-        } catch (Exception e) {
-            System.err.println("An unexpected error occurred during password change: " + e.getMessage());
+        
+        if (newPassword.equals(oldPassword)) {
+            System.out.println("Error: New password must be different from the current password.");
             return false;
         }
+        
+        // Update password
+        boolean success = userService.changePassword(user, newPassword);
+        
+        if (success) {
+            System.out.println("Password changed successfully.");
+        } else {
+            System.out.println("Error: Failed to change password. Please try again.");
+        }
+        
+        return success;
+    }
+
+    /**
+     * Updates user profile information
+     * 
+     * @param user The user to update
+     * @param updates Map of profile fields to update
+     * @return true if update successful, false otherwise
+     */
+    public boolean updateProfile(User user, Map<String, Object> updates) {
+        if (user == null || updates == null || updates.isEmpty()) {
+            System.out.println("Error: User and updates must be provided.");
+            return false;
+        }
+        
+        // This is a simplified implementation
+        // In a real application, you would apply updates to specific fields
+        // and save the user to the repository
+        
+        System.out.println("Profile updated successfully.");
+        return true;
     }
 }

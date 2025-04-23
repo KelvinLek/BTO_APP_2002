@@ -2,206 +2,260 @@ package controller;
 
 import entity.*;
 import pub_enums.*;
-import service.*;
-import java.util.*;
+import service.HdbOfficerService;
+import service.UserService;
+
+import java.util.List;
+import java.util.Map;
 
 /**
- * Controller for HDB Officer actions. Extends ApplicantController.
- * Requires an HdbOfficerService instance.
+ * Controller for HDB Officer-specific operations
  */
-public class HdbOfficerController extends ApplicantController {
+public class HdbOfficerController extends UserController {
+    private HdbOfficerService officerService;
 
-    public final HdbOfficerService officerService; // Changed to public for access in view layer
-
-    /**
-     * Constructor for HdbOfficerController.
-     * @param officerService   Service for officer operations.
-     * @param applicantService Service for applicant operations (passed to super).
-     * @param authService      Authentication service (passed to super).
-     * @param passwordService  Password service (passed to super).
-     */
-    public HdbOfficerController(HdbOfficerService officerService, ApplicantService applicantService, IAuthService authService, IPasswordService passwordService) {
-        super(applicantService, authService, passwordService); // Initialize base controllers
+    public HdbOfficerController(HdbOfficerService officerService, UserService userService) {
+        super(userService);
         this.officerService = officerService;
     }
 
     /**
-     * Handles registering the officer for a specific project.
-     * @param officer The currently logged-in HdbOfficer.
-     * @param project The Project to register for.
-     * @return true if registration request submitted, false otherwise.
+     * View assigned projects for an officer
+     * 
+     * @param officer The officer viewing projects
+     * @return List of assigned projects
      */
-    public boolean handleRegisterForProject(HdbOfficer officer, Project project) {
-        if (officer == null || project == null) {
-            System.out.println("Error: Missing officer or project information.");
-            return false;
-        }
-        try {
-            boolean success = officerService.registerForProject(officer, project);
-            if(success) {
-                System.out.println("Registration request submitted for project: " + project.getProjName());
-                return true;
-            } else {
-                System.out.println("Registration request failed."); // Service should give reason
-                return false;
-            }
-        } catch (NoSuchElementException | IllegalStateException | SecurityException e) {
-            System.err.println("Registration Error: " + e.getMessage());
-            return false;
-        } catch (Exception e) {
-            System.err.println("An unexpected error occurred during registration: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Handles viewing the registration status for a specific project.
-     * @param officer The currently logged-in HdbOfficer.
-     * @param project The Project to check status for.
-     */
-    public void handleViewRegistrationStatus(HdbOfficer officer, Project project) {
-        if (officer == null || project == null) {
-            System.out.println("Error: Missing officer or project information.");
-            return;
-        }
-        try {
-            String status = officerService.viewRegistrationStatus(officer, project);
-            System.out.println("Your registration status for project '" + project.getProjName() + "': " + status);
-        } catch (NoSuchElementException e) {
-            System.err.println("Error checking status: " + e.getMessage());
-        } catch (Exception e) {
-            System.err.println("An unexpected error occurred while checking registration status: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Handles booking a flat for a successful applicant.
-     * @param officer     The currently logged-in HdbOfficer performing the booking.
-     * @param application The Application (must be in SUCCESS status).
-     * @param flatType    The FlatType being booked (should match application).
-     * @return true if booking successful, false otherwise.
-     */
-    public boolean handleBookFlat(HdbOfficer officer, Application application, FlatType flatType) {
-        if (officer == null || application == null || flatType == null) {
-            System.out.println("Error: Missing officer, application, or flat type for booking.");
-            return false;
-        }
-        // Basic check: Ensure the flat type matches the application
-        if (!application.getFlatType().equalsIgnoreCase(flatType.name())) {
-            System.out.println("Error: The selected flat type (" + flatType + ") does not match the application (" + application.getFlatType() + ").");
-            return false;
-        }
-
-        try {
-            boolean success = officerService.bookFlat(application, flatType, officer);
-            if(success) {
-                System.out.println("Flat booked successfully for applicant " + application.getApplicantId() + " (Application ID: " + application.getId() + ")");
-                // Optionally trigger receipt generation display here via View
-                return true;
-            } else {
-                System.out.println("Flat booking failed."); // Service should give reason
-                return false;
-            }
-        } catch (NoSuchElementException | IllegalStateException | SecurityException e) {
-            System.err.println("Booking Error: " + e.getMessage());
-            return false;
-        } catch (Exception e) {
-            System.err.println("An unexpected error occurred during flat booking: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Handles viewing projects assigned to the officer.
-     * @param officer The currently logged-in HdbOfficer.
-     * @return List of assigned Project objects.
-     */
-    public List<Project> handleViewMyAssignedProjects(HdbOfficer officer) {
+    public List<Project> viewAssignedProjects(HdbOfficer officer) {
         if (officer == null) {
-            System.out.println("Error: Officer context is missing.");
-            return Collections.emptyList();
+            System.out.println("Error: Officer information missing.");
+            return List.of();
         }
-        try {
-            List<Project> projects = officerService.viewMyAssignedProjects(officer);
-            if (projects.isEmpty()) {
-                System.out.println("You are not currently assigned to any projects.");
-            }
-            // View layer handles display
-            return projects;
-        } catch (Exception e) {
-            System.err.println("An error occurred while fetching assigned projects: " + e.getMessage());
-            return Collections.emptyList();
+        
+        List<Project> projects = officerService.viewProjectsByUser(officer);
+        
+        if (projects.isEmpty()) {
+            System.out.println("You are not assigned to any projects.");
         }
+        
+        return projects;
     }
 
     /**
-     * Handles viewing enquiries for a specific assigned project.
-     * @param officer   The currently logged-in HdbOfficer.
-     * @param projectId The ID of the assigned project.
-     * @return List of Enquiry objects for that project.
+     * View details of a specific project
+     * 
+     * @param projectId The ID of the project to view
+     * @param officer The officer viewing the project
+     * @return The project details or null if not found/not authorized
      */
-    public List<Enquiry> handleViewEnquiriesByAssignedProject(HdbOfficer officer, String projectId) {
-        if (officer == null || projectId == null) {
-            System.out.println("Error: Missing officer or project ID.");
-            return Collections.emptyList();
+    public Project viewProjectDetails(String projectId, HdbOfficer officer) {
+        if (projectId == null || officer == null) {
+            System.out.println("Error: Project ID or officer information missing.");
+            return null;
         }
-        try {
-            // The service method viewEnquiriesByAssignedProject includes the security check
-            List<Enquiry> enquiries = officerService.viewEnquiriesByAssignedProject(projectId, officer);
-            if (enquiries.isEmpty()) {
-                System.out.println("No enquiries found for project ID: " + projectId);
-            }
-            // View layer handles display
-            return enquiries;
-        } catch (SecurityException e) {
-            System.err.println("Access Denied: " + e.getMessage());
-            return Collections.emptyList();
-        } catch (Exception e) {
-            System.err.println("An error occurred while fetching enquiries: " + e.getMessage());
-            return Collections.emptyList();
+        
+        Project project = officerService.viewProjectById(projectId, officer);
+        
+        if (project == null) {
+            System.out.println("Project not found or not available for viewing.");
         }
+        
+        return project;
     }
 
     /**
-     * Handles replying to a specific enquiry.
-     * @param officer   The currently logged-in HdbOfficer.
-     * @param enquiryId The ID of the enquiry to reply to.
-     * @param replyText The text of the reply.
-     * @return true if reply successful, false otherwise.
+     * View enquiries for projects assigned to the officer
+     * 
+     * @param officer The officer viewing enquiries
+     * @return List of enquiries
      */
-    public boolean handleReplyToEnquiry(HdbOfficer officer, String enquiryId, String replyText) {
-        if (officer == null || enquiryId == null || replyText == null || replyText.trim().isEmpty()) {
-            System.out.println("Error: Missing officer, enquiry ID, or reply text.");
-            return false;
+    public List<Enquiry> viewEnquiries(HdbOfficer officer) {
+        if (officer == null) {
+            System.out.println("Error: Officer information missing.");
+            return List.of();
         }
-        try {
-            // Fetch enquiry to pass the object to the service (or modify service)
-            // Use the officer-specific view method to ensure they can access it first
-            Enquiry enquiry = officerService.viewAssignedEnquiryById(enquiryId, officer);
-            if (enquiry == null) {
-                System.out.println("Enquiry with ID " + enquiryId + " not found or not accessible to you.");
-                return false;
-            }
-            if (enquiry.getReply() != null && !enquiry.getReply().isEmpty()) {
-                System.out.println("This enquiry has already been replied to.");
-                // Ask if overwrite? View layer decision. For now, prevent.
-                return false;
-            }
+        
+        List<Enquiry> enquiries = officerService.viewEnquiries(officer);
+        
+        if (enquiries.isEmpty()) {
+            System.out.println("No enquiries found for your assigned projects.");
+        }
+        
+        return enquiries;
+    }
 
-            boolean success = officerService.replyToEnquiry(enquiry, replyText, officer);
-            if(success) {
-                System.out.println("Reply submitted successfully for enquiry ID: " + enquiryId);
-                return true;
-            } else {
-                System.out.println("Failed to submit reply."); // Service should give reason
-                return false;
-            }
-        } catch (NoSuchElementException | SecurityException e) {
-            System.err.println("Reply Error: " + e.getMessage());
-            return false;
-        } catch (Exception e) {
-            System.err.println("An unexpected error occurred while submitting reply: " + e.getMessage());
+    /**
+     * View a specific enquiry
+     * 
+     * @param enquiryId The ID of the enquiry to view
+     * @param officer The officer viewing the enquiry
+     * @return The enquiry or null if not found/not authorized
+     */
+    public Enquiry viewEnquiry(String enquiryId, HdbOfficer officer) {
+        if (enquiryId == null || officer == null) {
+            System.out.println("Error: Enquiry ID or officer information missing.");
+            return null;
+        }
+        
+        Enquiry enquiry = officerService.viewEnquiryById(enquiryId, officer);
+        
+        if (enquiry == null) {
+            System.out.println("Enquiry not found or not accessible.");
+        }
+        
+        return enquiry;
+    }
+
+    /**
+     * Reply to an enquiry
+     * 
+     * @param enquiryId The ID of the enquiry to reply to
+     * @param officer The officer replying
+     * @param replyMessage The reply message
+     * @return true if reply successful, false otherwise
+     */
+    public boolean replyToEnquiry(String enquiryId, HdbOfficer officer, String replyMessage) {
+        if (enquiryId == null || officer == null || replyMessage == null || replyMessage.trim().isEmpty()) {
+            System.out.println("Error: Enquiry ID, officer, or reply message information missing.");
             return false;
         }
+        
+        // Check if enquiry exists and belongs to an assigned project
+        Enquiry enquiry = officerService.viewEnquiryById(enquiryId, officer);
+        if (enquiry == null) {
+            System.out.println("Enquiry not found or not accessible.");
+            return false;
+        }
+        
+        // Check if enquiry has already been replied to
+        if (enquiry.getReply() != null && !enquiry.getReply().isEmpty()) {
+            System.out.println("This enquiry has already been replied to.");
+            return false;
+        }
+        
+        boolean result = officerService.replyToEnquiry(enquiryId, officer, replyMessage);
+        
+        if (result) {
+            System.out.println("Reply submitted successfully.");
+        } else {
+            System.out.println("Failed to submit reply. Please try again.");
+        }
+        
+        return result;
+    }
+
+    /**
+     * Process an application (approve or reject)
+     * 
+     * @param applicationId The ID of the application to process
+     * @param officer The officer processing the application
+     * @param approve true to approve, false to reject
+     * @return true if processing successful, false otherwise
+     */
+    public boolean processApplication(String applicationId, HdbOfficer officer, boolean approve) {
+        if (applicationId == null || officer == null) {
+            System.out.println("Error: Application ID or officer information missing.");
+            return false;
+        }
+        
+        boolean result = officerService.processApplication(applicationId, officer, approve);
+        
+        if (result) {
+            System.out.println("Application " + (approve ? "approved" : "rejected") + " successfully.");
+        } else {
+            System.out.println("Failed to process application. Please try again.");
+        }
+        
+        return result;
+    }
+
+    /**
+     * Process a withdrawal request
+     * 
+     * @param applicationId The ID of the application with withdrawal request
+     * @param officer The officer processing the request
+     * @param approve true to approve withdrawal, false to reject the request
+     * @return true if processing successful, false otherwise
+     */
+    public boolean processWithdrawalRequest(String applicationId, HdbOfficer officer, boolean approve) {
+        if (applicationId == null || officer == null) {
+            System.out.println("Error: Application ID or officer information missing.");
+            return false;
+        }
+        
+        boolean result = officerService.processWithdrawalRequest(applicationId, officer, approve);
+        
+        if (result) {
+            System.out.println("Withdrawal request " + (approve ? "approved" : "rejected") + " successfully.");
+        } else {
+            System.out.println("Failed to process withdrawal request. Please try again.");
+        }
+        
+        return result;
+    }
+
+    /**
+     * Register for a project
+     * 
+     * @param officer The officer registering
+     * @param project The project to register for
+     * @return true if registration successful, false otherwise
+     */
+    public boolean registerForProject(HdbOfficer officer, Project project) {
+        if (officer == null || project == null) {
+            System.out.println("Error: Officer or project information missing.");
+            return false;
+        }
+        
+        boolean result = officerService.registerForProject(officer, project);
+        
+        if (result) {
+            System.out.println("Registration for project successful.");
+        } else {
+            System.out.println("Failed to register for project. Please try again.");
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Filter projects based on criteria
+     * 
+     * @param filters Map of filter criteria
+     * @param officer The officer filtering projects
+     * @return List of filtered projects
+     */
+    public List<Project> filterProjects(Map<String, String> filters, HdbOfficer officer) {
+        if (filters == null || officer == null) {
+            System.out.println("Error: Filter criteria or officer information missing.");
+            return List.of();
+        }
+        
+        List<Project> projects = officerService.filterAllProjects(filters, officer);
+        
+        if (projects.isEmpty()) {
+            System.out.println("No projects match your filter criteria.");
+        }
+        
+        return projects;
+    }
+
+    /**
+     * Check if applicant is eligible for a project
+     * 
+     * @param applicant The applicant to check
+     * @param project The project to check eligibility for
+     * @return true if eligible, false otherwise
+     */
+    public boolean checkApplicantEligibility(Applicant applicant, Project project) {
+        if (applicant == null || project == null) {
+            System.out.println("Error: Applicant or project information missing.");
+            return false;
+        }
+        
+        boolean eligible = officerService.checkEligibility(applicant, project);
+        
+        System.out.println("Applicant is " + (eligible ? "eligible" : "not eligible") + " for this project.");
+        
+        return eligible;
     }
 }

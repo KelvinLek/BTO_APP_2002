@@ -1,58 +1,79 @@
 package app;
 
-import service.*;
 import controller.*;
+import entity.*;
+import repository.*;
+import service.*;
 import view.CLIView;
 
 /**
  * Main application class to bootstrap the BTO Management System.
- * Initializes services, controllers, and the view, then starts the application loop.
+ * Initializes repositories, services, controllers, and the view, then starts the application.
  */
 public class Main {
-
     public static void main(String[] args) {
         System.out.println("Starting BTO Management System...");
 
-        // --- Service Instantiation ---
-        // In a real application, these services would likely be injected
-        // with repository instances. Here, they use their internal placeholders.
-        // IMPORTANT: Ensure these service classes have constructors that work
-        // without repository arguments for this placeholder setup.
-        // If they require repo interfaces, you might need to pass null or mock objects.
-        // Based on previous generation, they extend UserService which needs IAuthService/IPasswordService
-        // and implement their own interfaces. Let's assume they have workable default constructors or
-        // constructors that can accept themselves as implementations of the needed interfaces.
+        // Add debugging
+        System.out.println("Debug: Initializing repositories...");
+        
+        try {
+            // Initialize repositories
+            ApplicantRepo applicantRepo = new ApplicantRepo();
+            System.out.println("Debug: ApplicantRepo initialized");
+            
+            HdbManagerRepo managerRepo = new HdbManagerRepo();
+            System.out.println("Debug: HdbManagerRepo initialized");
+            
+            HdbOfficerRepo officerRepo = new HdbOfficerRepo();
+            System.out.println("Debug: HdbOfficerRepo initialized");
+            
+            ProjectRepo projectRepo = new ProjectRepo(managerRepo, officerRepo);
+            System.out.println("Debug: ProjectRepo initialized");
+            
+            ApplicationRepo applicationRepo = new ApplicationRepo();
+            System.out.println("Debug: ApplicationRepo initialized");
+            
+            EnquiryRepo enquiryRepo = new EnquiryRepo();
+            System.out.println("Debug: EnquiryRepo initialized");
 
-        // Create concrete service instances
-        ApplicantService applicantService = new ApplicantService(); // Assumes default constructor works for placeholder version
-        HdbOfficerService hdbOfficerService = new HdbOfficerService(); // Assumes default constructor
-        HdbManagerService hdbManagerService = new HdbManagerService(); // Assumes default constructor
+        // Initialize services
+        UserService userService = new UserService(applicantRepo, managerRepo, officerRepo);
+        
+        ApplicantService applicantService = new ApplicantService(
+                applicantRepo, projectRepo, applicationRepo, enquiryRepo);
+        
+        HdbOfficerService officerService = new HdbOfficerService(
+                officerRepo, projectRepo, applicationRepo, enquiryRepo, applicantRepo);
+        
+        HdbManagerService managerService = new HdbManagerService(
+                managerRepo, projectRepo, applicationRepo, enquiryRepo, officerRepo);
 
-        // --- Controller Instantiation ---
-        // Inject the corresponding services into the controllers.
-        // Note: UserController is the base, but login might be handled before specific roles.
-        // We instantiate all role controllers and pass them to the view.
-
-        // Create a generic UserController instance primarily for login/password change before role is known
-        // Pass the respective service instances that implement the required interfaces
-        UserController userController = new UserController(applicantService, applicantService); // ApplicantService implements IAuthService, IPasswordService
-
+        // Initialize controllers
+        UserController userController = new UserController(userService);
+        
         ApplicantController applicantController = new ApplicantController(
-                applicantService, applicantService, applicantService); // ApplicantService provides all needed interfaces for itself and base
+                applicantService, userService);
+        
+        HdbOfficerController officerController = new HdbOfficerController(
+                officerService, userService);
+        
+        HdbManagerController managerController = new HdbManagerController(
+                managerService, userService);
 
-        HdbOfficerController hdbOfficerController = new HdbOfficerController(
-                hdbOfficerService, applicantService, hdbOfficerService, hdbOfficerService); // OfficerService provides officer methods and inherits/implements others
-
-        HdbManagerController hdbManagerController = new HdbManagerController(
-                hdbManagerService, hdbManagerService, hdbManagerService); // ManagerService provides all needed interfaces for itself and base
-
-        // --- View Instantiation ---
-        // Inject all controllers into the view.
-        CLIView cliView = new CLIView(userController, applicantController, hdbOfficerController, hdbManagerController);
-
-        // --- Start Application ---
+        // Initialize and start CLI view
+        CLIView cliView = new CLIView(
+                userController, applicantController, officerController, managerController);
+        
+        System.out.println("Debug: CLIView initialized");
+                
+        // Start application
         cliView.run();
-
+        
         System.out.println("Exiting BTO Management System. Goodbye!");
+        } catch (Exception e) {
+            System.err.println("Debug: Error during initialization: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

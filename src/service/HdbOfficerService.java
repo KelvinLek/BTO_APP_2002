@@ -2,324 +2,546 @@ package service;
 
 import entity.*;
 import pub_enums.*;
-import util.PlaceholderDataUtil;
+import repository.*;
 
 import java.util.*;
+import java.time.LocalDate;
+import java.time.Period;
+import java.time.ZoneId;
 
-public class HdbOfficerService extends ApplicantService implements IBookFlatService, IEnquiryViewable, IHdbOfficerService, IOfficerProjectView, IOfficerEnquiryView, IReplyable {
+/**
+ * Provides services specific to HDB Officers, handling project viewing,
+ * application processing, and enquiry handling.
+ */
+public class HdbOfficerService extends UserService implements IApplyableService, IEligibilityCheck, IProjectView {
 
-    public HdbOfficerService() {
-        super(); // Call the parent constructor
+    private HdbOfficerRepo officerRepo;
+    private ProjectRepo projectRepo;
+    private ApplicationRepo applicationRepo;
+    private EnquiryRepo enquiryRepo;
+    private ApplicantRepo applicantRepo;
+
+    public HdbOfficerService(HdbOfficerRepo officerRepo, ProjectRepo projectRepo, 
+                            ApplicationRepo applicationRepo, EnquiryRepo enquiryRepo,
+                            ApplicantRepo applicantRepo) {
+        super();
+        this.officerRepo = officerRepo;
+        this.projectRepo = projectRepo;
+        this.applicationRepo = applicationRepo;
+        this.enquiryRepo = enquiryRepo;
+        this.applicantRepo = applicantRepo;
     }
 
-    // --- IHdbOfficerService Implementation ---
+    // --- IProjectView Implementation ---
 
+    /**
+     * Retrieves the details of a project by its ID if the officer is assigned to it.
+     *
+     * @param projectId The ID of the project.
+     * @param user The User viewing the project.
+     * @return The Project object or null.
+     */
     @Override
-    public boolean registerForProject(HdbOfficer officer, Project project) throws NoSuchElementException, IllegalStateException, Exception {
-        if (officer == null || project == null) {
-            throw new NoSuchElementException("Officer and Project cannot be null.");
+    public Project viewProjectById(String projectId, User user) {
+        if (projectId == null || user == null || !(user instanceof HdbOfficer)) return null;
+        HdbOfficer officer = (HdbOfficer) user;
+
+        Project project = projectRepo.findById(projectId).orElse(null);
+        if (project == null) return null;
+
+        // Check if the officer is assigned to this project
+        if (project.getOfficers() != null && project.getOfficers().stream()
+                .anyMatch(o -> o.getId().equals(officer.getId()))) {
+            return project;
         }
-        if (officer.getId() == null || project.getProjectId() == null){
-            throw new NoSuchElementException("Officer or Project ID missing.");
+        
+        // Officers can also view projects they're not assigned to if they're visible
+        if (project.isVisible()) {
+            return project;
+        }
+        
+        return null; // Not assigned and not visible
+    }
+
+    /**
+     * Filters projects based on criteria.
+     *
+     * @param filters Map of filter criteria.
+     * @param user The User performing the filter.
+     * @return List of matching projects.
+     */
+    @Override
+    public List<Project> filterAllProjects(Map<String, String> filters, User user) {
+        if (!(user instanceof HdbOfficer)) return Collections.emptyList();
+        
+        List<Project> accessibleProjects = viewProjectsByUser(user);
+        if (filters == null || filters.isEmpty()) {
+            return accessibleProjects; // No filters applied
         }
 
-        // 1. Check if Officer has applied for this project as an Applicant
-        Application existingApp = PlaceholderDataUtil.findActiveApplicationByApplicantPlaceholder(officer.getId());
-        if(existingApp != null && existingApp.getProjectId().equals(project.getProjectId())){
-            throw new IllegalStateException("Officer cannot register for a project they have applied to as an applicant.");
-        }
+        List<Project> filteredList = new ArrayList<>();
+        for (Project project : accessibleProjects) {
+            boolean match = true;
+            for (Map.Entry<String, String> entry : filters.entrySet()) {
+                String key = entry.getKey().toLowerCase();
+                String value = entry.getValue();
+                if (value == null || value.trim().isEmpty()) continue; // Skip empty filter values
 
-        // 2. Check for overlapping duty period with currently *approved* assigned projects
-        List<Project> assignedProjects = officer.getAssignedProjects(); // Assumes this list holds approved assignments
-        if(assignedProjects != null && project.getAppOpen() != null && project.getAppClose() != null){
-            for (Project assigned : assignedProjects) {
-                if (assigned.getAppOpen() != null && assigned.getAppClose() != null) {
-                    // Check for overlap: (StartA <= EndB) and (EndA >= StartB)
-                    if (!project.getAppOpen().after(assigned.getAppClose()) && !project.getAppClose().before(assigned.getAppOpen())) {
-                        throw new IllegalStateException("Officer already assigned to project '" + assigned.getProjName() + "' during this period.");
-                    }
+                switch (key) {
+                    case "neighbourhood":
+                        if (project.getNeighbourhood() == null || !project.getNeighbourhood().equalsIgnoreCase(value)) {
+                            match = false;
+                        }
+                        break;
+                    case "flattype": // Check if project offers this flat type
+                        try {
+                            FlatType requestedType = FlatType.valueOf(value.toUpperCase());
+                            boolean offersType = false;
+                            if(project.getFlats() != null){
+                                for(Flat flat : project.getFlats()){
+                                    if(flat.getFlatType() == requestedType){
+                                        offersType = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if(!offersType) match = false;
+                        } catch (IllegalArgumentException e) {
+                            match = false; // Invalid flat type string
+                        }
+                        break;
+                    case "projectname":
+                        if (project.getProjName() == null || !project.getProjName().toLowerCase().contains(value.toLowerCase())) {
+                            match = false;
+                        }
+                        break;
+                    case "assigned":
+                        boolean assigned = Boolean.parseBoolean(value);
+                        boolean isAssigned = isOfficerAssigned((HdbOfficer)user, project);
+                        if (assigned != isAssigned) {
+                            match = false;
+                        }
+                        break;
+                    default:
+                        // Ignore unknown filter keys
+                        break;
                 }
+                if (!match) break; // Stop checking filters for this project if one fails
+            }
+            if (match) {
+                filteredList.add(project);
             }
         }
-
-        // 3. Update officer's status or log request (Implementation depends on how pending requests are tracked)
-        // Option A: Set a generic status on the officer object
-        officer.setStatus(OfficerStatus.PENDING); // Example status
-
-        // Option B: Create a separate RegistrationRequest entity/record (more robust)
-        // RegistrationRequest request = new RegistrationRequest(officer.getId(), project.getId(), "PENDING");
-        // registrationRequestRepo.save(request); // Example
-
-        try {
-            // Save the updated officer status or the new request
-            // officerRepo.save(officer); // Example for Option A
-            PlaceholderDataUtil.saveUserPlaceholder(officer);
-            System.out.println("Officer " + officer.getId() + " registration request submitted for project " + project.getProjectId());
-            return true;
-        } catch (Exception e) {
-            System.err.println("Error saving officer registration request: " + e.getMessage());
-            throw new Exception("Failed to log registration request.", e);
-        }
+        return filteredList;
     }
 
+    /**
+     * Retrieves projects that the officer is assigned to.
+     *
+     * @param user The User viewing the projects.
+     * @return List of projects.
+     */
     @Override
-    public String viewRegistrationStatus(HdbOfficer officer, Project project) throws NoSuchElementException {
-        if (officer == null || project == null || officer.getId() == null || project.getProjectId() == null) {
-            throw new NoSuchElementException("Officer or Project missing for status check.");
-        }
+    public List<Project> viewProjectsByUser(User user) {
+        if (!(user instanceof HdbOfficer)) return Collections.emptyList();
+        HdbOfficer officer = (HdbOfficer) user;
 
-        // Logic depends on how status is stored.
-        // Option A: Check officer's general status field
-        OfficerStatus currentStatus = officer.getStatus();
-        if (currentStatus != null && currentStatus == OfficerStatus.PENDING) {
-            return "Pending Registration";
-        }
-
-        // Option B: Check a dedicated RegistrationRequest entity
-        // RegistrationRequest request = registrationRequestRepo.findByOfficerAndProject(officer.getId(), project.getId());
-        // if (request != null) return request.getStatus(); // e.g., "PENDING", "APPROVED", "REJECTED"
-
-        // Option C: Check if the project is in the officer's assignedProjects list (implies approved)
-        List<Project> assigned = officer.getAssignedProjects();
-        if (assigned != null) {
-            for(Project p : assigned){
-                if(p.getProjectId().equals(project.getProjectId())){
-                    return "Approved"; // Found in assigned list
-                }
+        // Get all projects
+        List<Project> allProjects = projectRepo.findAll();
+        List<Project> assignedProjects = new ArrayList<>();
+        List<Project> visibleProjects = new ArrayList<>();
+        
+        for (Project project : allProjects) {
+            // Check if officer is assigned to this project
+            if (project.getOfficers() != null && project.getOfficers().stream()
+                    .anyMatch(o -> o.getId().equals(officer.getId()))) {
+                assignedProjects.add(project);
+            }
+            // Also include visible projects
+            else if (project.isVisible()) {
+                visibleProjects.add(project);
             }
         }
-
-        // If none of the above, assume not registered or rejected without specific status
-        // Check officer status for generic rejection?
-        if("Rejected".equals(currentStatus)) { // Vague if multiple rejections possible
-            // Need more specific status tracking
-        }
-
-        return "Not Registered"; // Default if no specific status found
+        
+        // Combine lists with assigned projects first
+        List<Project> result = new ArrayList<>(assignedProjects);
+        result.addAll(visibleProjects);
+        
+        return result;
+    }
+    
+    /**
+     * Checks if an officer is assigned to a project.
+     */
+    private boolean isOfficerAssigned(HdbOfficer officer, Project project) {
+        if (project.getOfficers() == null) return false;
+        
+        return project.getOfficers().stream()
+                .anyMatch(o -> o.getId().equals(officer.getId()));
     }
 
-    // --- IBookFlatService Implementation ---
+    // --- IApplyableService Implementation ---
 
+    /**
+     * Calculates the age of the user based on Date of Birth.
+     * @param birthDate The user's Date of Birth.
+     * @return The age in years, or 0 if birthDate is null.
+     */
     @Override
-    public boolean bookFlat(Application application, FlatType flatType, HdbOfficer officer) throws NoSuchElementException, IllegalStateException, SecurityException, Exception {
-        if (application == null || flatType == null || officer == null || application.getId() == null || application.getProjectId() == null || officer.getId() == null) {
-            throw new IllegalArgumentException("Application, FlatType, and Officer details are required.");
+    public int calculateAge(Date birthDate) {
+        if (birthDate == null) {
+            return 0;
         }
+        LocalDate today = LocalDate.now();
+        LocalDate birthday = birthDate.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        return Period.between(birthday, today).getYears();
+    }
 
-        // 1. Verify officer is assigned and approved for this project
-        Project project = PlaceholderDataUtil.findProjectByIdPlaceholder(application.getProjectId());
-        if(project == null){
-            throw new NoSuchElementException("Project " + application.getProjectId() + " not found.");
-        }
-        boolean isAssigned = false;
-        if(officer.getAssignedProjects() != null){
-            for(Project p : officer.getAssignedProjects()){
-                if(p.getProjectId().equals(project.getProjectId())){
-                    isAssigned = true;
-                    break;
-                }
+    /**
+     * Officers cannot apply for projects. This method always returns false.
+     */
+    @Override
+    public boolean applyForProject(User user, Project project) {
+        // Officers cannot apply for projects
+        return false;
+    }
+
+    /**
+     * Retrieves application status. Not applicable for officers.
+     */
+    @Override
+    public Application getApplicationStatus(User user) {
+        // Not applicable for officers
+        return null;
+    }
+
+    /**
+     * Submits a new enquiry response. Officers can reply to enquiries.
+     *
+     * @param user The Officer responding.
+     * @param project The Project the enquiry is about.
+     * @param message The reply message.
+     * @return The updated Enquiry object.
+     */
+    @Override
+    public Enquiry submitEnquiry(User user, Project project, String message) {
+        // Officers use this method to reply to enquiries rather than create them
+        // For now returning null as this function signature doesn't support reply
+        return null;
+    }
+
+    /**
+     * Retrieves enquiries for a specific project that the officer is assigned to.
+     *
+     * @param user The Officer.
+     * @return A List of Enquiry objects.
+     */
+    @Override
+    public List<Enquiry> viewEnquiries(User user) {
+        if (!(user instanceof HdbOfficer)) return Collections.emptyList();
+        HdbOfficer officer = (HdbOfficer) user;
+        
+        // Get all projects officer is assigned to
+        List<Project> assignedProjects = new ArrayList<>();
+        for (Project project : projectRepo.findAll()) {
+            if (isOfficerAssigned(officer, project)) {
+                assignedProjects.add(project);
             }
         }
-        if(!isAssigned || !"Approved".equals(viewRegistrationStatus(officer, project))) {
-            throw new SecurityException("Officer " + officer.getId() + " is not authorized to book flats for project " + project.getProjectId());
+        
+        // Get enquiries for all assigned projects
+        List<Enquiry> enquiries = new ArrayList<>();
+        for (Project project : assignedProjects) {
+            enquiries.addAll(enquiryRepo.findByProjectId(project.getProjectId()));
         }
-
-        // 2. Find the application again to work with the persisted state
-        Application appToBook = PlaceholderDataUtil.findApplicationByIdPlaceholder(application.getId());
-        if(appToBook == null) {
-            throw new NoSuchElementException("Application with ID " + application.getId() + " not found.");
-        }
-
-        // 3. Check application status is "Successful"
-        if (appToBook.getStatus() != ApplStatus.SUCCESS) {
-            throw new IllegalStateException("Application status must be SUCCESSFUL to book a flat. Current status: " + appToBook.getStatus());
-        }
-
-        // 4. Check flat availability and decrement count
-        boolean booked = false;
-        if (project.getFlats() != null) {
-            for (Flat flat : project.getFlats()) {
-                if (flat.getFlatType() == flatType) {
-                    if (flat.getRemaining() > 0) {
-                        flat.setRemaining(flat.getRemaining() - 1); // Decrement
-                        booked = true;
-                    } else {
-                        throw new IllegalStateException("No remaining units available for flat type: " + flatType + " in project " + project.getProjName());
-                    }
-                    break; // Found the flat type
-                }
-            }
-        }
-        if (!booked) {
-            // This case implies the flatType exists but wasn't found in the loop (error)
-            // OR the project has no flats defined matching the type.
-            throw new IllegalStateException("Selected flat type " + flatType + " not found or could not be booked in project " + project.getProjName());
-        }
-
-        // 5. Update application status to "Booked"
-        appToBook.setStatus(ApplStatus.BOOKED);
-        // Optionally update applicant's main status if needed:
-        // Applicant applicant = findUserByIdPlaceholder(appToBook.getApplicantId());
-        // if (applicant instanceof Applicant) { ((Applicant)applicant).setStatus("Booked"); saveUserPlaceholder(applicant);}
-
-        // 6. Save changes (atomicity needed in real systems)
-        try {
-            PlaceholderDataUtil.saveApplicationPlaceholder(appToBook); // Save application status
-            PlaceholderDataUtil.saveProjectPlaceholder(project); // Save updated flat counts
-            System.out.println("Flat " + flatType + " booked successfully for application " + appToBook.getId());
-            // Generate receipt (could be done here or separately)
-            // generateReceipt(appToBook, officer); // Requires IReceiptService
-            return true;
-        } catch (Exception e) {
-            System.err.println("Error saving booking: " + e.getMessage());
-            // Rollback changes if possible (decrementing flat count, status update)
-            // flat.setRemaining(flat.getRemaining() + 1); // Example rollback
-            // appToBook.setStatus(ApplStatus.SUCCESS);
-            throw new Exception("Failed to finalize booking.", e);
-        }
+        
+        return enquiries;
     }
 
-    // --- IEnquiryViewable Implementation ---
-    // Provides generic viewing capabilities, potentially overlapping with role-specific views
-
+    /**
+     * Retrieves a specific enquiry by ID, ensuring the officer has access to it.
+     *
+     * @param enquiryId The ID of the enquiry.
+     * @param user The Officer requesting the view.
+     * @return The Enquiry object or null if not found/not authorized.
+     */
     @Override
-    public List<Enquiry> viewEnquiriesByProject(UUID projectId) {
-        if(projectId == null) return Collections.emptyList();
-        return PlaceholderDataUtil.findEnquiriesByProjectPlaceholder(projectId.toString());
-    }
-
-    @Override
-    public List<Enquiry> viewEnquiriesByApplicant(String applicantId) {
-        if(applicantId == null) return Collections.emptyList();
-        return PlaceholderDataUtil.findEnquiriesByApplicantPlaceholder(applicantId);
-    }
-
-    @Override
-    public List<Enquiry> viewAllEnquiries() {
-        List<Enquiry> allEnquiries = new ArrayList<>();
-        // Collect from all projects
-        for (Project project : PlaceholderDataUtil.findAllProjectsPlaceholder()) {
-            allEnquiries.addAll(PlaceholderDataUtil.findEnquiriesByProjectPlaceholder(project.getProjectId()));
-        }
-        return allEnquiries;
-    }
-
-    @Override
-    public Enquiry viewEnquiryById(String enquiryId) {
-        if(enquiryId == null) return null;
-        return PlaceholderDataUtil.findEnquiryByIdPlaceholder(enquiryId);
-    }
-
-    // --- IOfficerProjectView Implementation ---
-
-    @Override
-    public Project viewAssignedProjectDetails(String projectId, HdbOfficer officer) throws SecurityException {
-        if (projectId == null || officer == null || officer.getId() == null) return null;
-
-        Project project = PlaceholderDataUtil.findProjectByIdPlaceholder(projectId);
-        if(project == null) return null; // Not found
-
-        // Verify assignment
-        boolean isAssigned = false;
-        if(officer.getAssignedProjects() != null){
-            for(Project p : officer.getAssignedProjects()){
-                if(p.getProjectId().equals(project.getProjectId())){
-                    isAssigned = true;
-                    break;
-                }
-            }
-        }
-        if(!isAssigned) {
-            throw new SecurityException("Officer " + officer.getId() + " is not assigned to project " + projectId);
-        }
-
-        return project;
-    }
-
-    @Override
-    public List<Project> viewMyAssignedProjects(HdbOfficer officer) {
-        if (officer == null) return Collections.emptyList();
-        // This assumes the HdbOfficer entity correctly maintains the list of assigned projects.
-        List<Project> assigned = officer.getAssignedProjects();
-        return (assigned != null) ? assigned : Collections.emptyList();
-    }
-
-    // --- IOfficerEnquiryView Implementation ---
-
-    @Override
-    public List<Enquiry> viewEnquiriesByAssignedProject(String projectId, HdbOfficer officer) throws SecurityException {
-        if (projectId == null || officer == null || officer.getId() == null) return Collections.emptyList();
-
-        // Verify assignment first
-        viewAssignedProjectDetails(projectId, officer); // This throws SecurityException if not assigned
-
-        // If assigned, fetch enquiries for that project
-        return PlaceholderDataUtil.findEnquiriesByProjectPlaceholder(projectId);
-    }
-
-    @Override
-    public Enquiry viewAssignedEnquiryById(String enquiryId, HdbOfficer officer) throws SecurityException {
-        if (enquiryId == null || officer == null || officer.getId() == null) return null;
-
-        Enquiry enquiry = PlaceholderDataUtil.findEnquiryByIdPlaceholder(enquiryId);
-        if (enquiry == null) return null; // Not found
-
-        // Check if the enquiry's project is one the officer is assigned to
-        try {
-            viewAssignedProjectDetails(enquiry.getProjectId(), officer); // Re-use assignment check
-            // If the above doesn't throw SecurityException, the officer is assigned
+    public Enquiry viewEnquiryById(String enquiryId, User user) {
+        if (!(user instanceof HdbOfficer) || enquiryId == null) return null;
+        HdbOfficer officer = (HdbOfficer) user;
+        
+        Enquiry enquiry = enquiryRepo.findById(enquiryId).orElse(null);
+        if (enquiry == null) return null;
+        
+        // Check if officer is assigned to the project this enquiry is about
+        Project project = projectRepo.findById(enquiry.getProjectId()).orElse(null);
+        if (project == null) return null;
+        
+        if (isOfficerAssigned(officer, project)) {
             return enquiry;
-        } catch (SecurityException e) {
-            // Officer is not assigned to the project this enquiry belongs to
-            throw new SecurityException("Officer " + officer.getId() + " cannot view enquiry " + enquiryId + " (not assigned to project " + enquiry.getProjectId() + ").");
         }
+        
+        return null; // Not authorized
     }
 
-    // --- IReplyable Implementation ---
-
+    /**
+     * Officers cannot edit enquiries. This method does nothing.
+     */
     @Override
-    public boolean replyToEnquiry(Enquiry enquiry, String replyText, User replyingUser) throws NoSuchElementException, SecurityException, Exception {
-        if (enquiry == null || enquiry.getEnquiryId() == null || replyText == null || replyText.trim().isEmpty() || replyingUser == null || replyingUser.getId() == null) {
-            throw new IllegalArgumentException("Enquiry, reply text, and replying user details are required.");
+    public void editEnquiry(String enquiryId, User user, String newMessage) {
+        // Officers cannot edit enquiries, only reply to them
+    }
+
+    /**
+     * Officers cannot delete enquiries. This method does nothing.
+     */
+    @Override
+    public void deleteEnquiry(String enquiryId, User user) {
+        // Officers cannot delete enquiries
+    }
+
+    // --- IEligibilityCheck Implementation ---
+
+    /**
+     * Checks if an applicant is eligible for a specific flat type based on age and marital status.
+     *
+     * @param user The User (must be Applicant).
+     * @param flatType The FlatType being considered.
+     * @return true if eligible, false otherwise.
+     */
+    @Override
+    public boolean checkEligibility(User user, FlatType flatType) {
+        if (!(user instanceof Applicant)) return false;
+        Applicant applicant = (Applicant) user;
+        
+        if (applicant.getDob() == null || applicant.getMaritalStatus() == null) {
+            return false;
         }
 
-        // 1. Find the existing enquiry
-        Enquiry existingEnquiry = PlaceholderDataUtil.findEnquiryByIdPlaceholder(enquiry.getEnquiryId());
-        if (existingEnquiry == null) {
-            throw new NoSuchElementException("Enquiry with ID " + enquiry.getEnquiryId() + " not found.");
+        int age = calculateAge(applicant.getDob());
+        MaritalStatus maritalStatus = applicant.getMaritalStatus();
+
+        if (maritalStatus == MaritalStatus.SINGLE) {
+            return age >= 35 && flatType == FlatType.TWOROOM;
+        } else if (maritalStatus == MaritalStatus.MARRIED) {
+            return age >= 21 && (flatType == FlatType.TWOROOM || flatType == FlatType.THREEROOM);
         }
 
-        // 2. Check permission: User must be an HDB Officer assigned to the project OR an HDB Manager
-        boolean authorized = false;
-        if (replyingUser.getRole() == Role.HDBMANAGER) {
-            authorized = true; // Managers can reply to any enquiry
-        } else if (replyingUser instanceof HdbOfficer) {
-            HdbOfficer officer = (HdbOfficer) replyingUser;
-            try {
-                // Check if officer is assigned to the enquiry's project
-                viewAssignedProjectDetails(existingEnquiry.getProjectId(), officer);
-                authorized = true;
-            } catch (SecurityException e) {
-                authorized = false; // Officer not assigned
+        return false;
+    }
+
+    /**
+     * Checks if an applicant is eligible to apply for a project.
+     *
+     * @param user The User (must be Applicant).
+     * @param project The Project.
+     * @return true if eligible, false otherwise.
+     */
+    @Override
+    public boolean checkEligibility(User user, Project project) {
+        if (!(user instanceof Applicant)) return false;
+        Applicant applicant = (Applicant) user;
+        
+        if (project.getFlats() == null || project.getFlats().isEmpty()) {
+            return false;
+        }
+
+        // Check if eligible for at least one flat type offered by the project
+        boolean eligibleForAnyFlat = false;
+        for (Flat flat : project.getFlats()) {
+            if (checkEligibility(applicant, flat.getFlatType())) {
+                eligibleForAnyFlat = true;
+                break;
             }
         }
-
-        if (!authorized) {
-            throw new SecurityException("User " + replyingUser.getId() + " (Role: " + replyingUser.getRole() + ") is not authorized to reply to enquiry " + existingEnquiry.getEnquiryId());
+        if (!eligibleForAnyFlat) {
+            return false; // Not eligible for any flat in this project
         }
 
-        // 3. Update the reply
-        existingEnquiry.setReply(replyText + " [Replied by: " + replyingUser.getId() + "]"); // Add who replied
+        // Check if applicant already has an active application
+        Application existingApp = applicationRepo.findActiveByApplicantId(applicant.getId());
+        return existingApp == null; // Eligible only if no active application
+    }
 
-        // 4. Save the updated enquiry
-        try {
-            PlaceholderDataUtil.saveEnquiryPlaceholder(existingEnquiry);
-            System.out.println("Reply added to enquiry " + existingEnquiry.getEnquiryId() + " by " + replyingUser.getId());
-            return true;
-        } catch (Exception e) {
-            System.err.println("Error saving enquiry reply: " + e.getMessage());
-            // existingEnquiry.setReply(originalReply); // Rollback
-            throw new Exception("Failed to save enquiry reply.", e);
+    /**
+     * Adds a reply to an enquiry.
+     * 
+     * @param enquiryId The ID of the enquiry to reply to.
+     * @param officer The officer adding the reply.
+     * @param replyMessage The reply message.
+     * @return true if successful, false otherwise.
+     */
+    public boolean replyToEnquiry(String enquiryId, HdbOfficer officer, String replyMessage) {
+        if (enquiryId == null || officer == null || replyMessage == null || replyMessage.trim().isEmpty()) {
+            return false;
         }
+        
+        Enquiry enquiry = enquiryRepo.findById(enquiryId).orElse(null);
+        if (enquiry == null) return false;
+        
+        // Check if officer is assigned to the project
+        Project project = projectRepo.findById(enquiry.getProjectId()).orElse(null);
+        if (project == null) return false;
+        
+        if (!isOfficerAssigned(officer, project)) {
+            return false; // Not authorized
+        }
+        
+        // Add the reply
+        enquiry.setReply(replyMessage);
+        enquiryRepo.update(enquiry);
+        
+        // Also update in applicant's object if present
+        Optional<Applicant> optApplicant = applicantRepo.findById(enquiry.getApplicantId());
+        if (optApplicant.isPresent()) {
+            Applicant applicant = optApplicant.get();
+            if (applicant.getEnquiries() != null) {
+                for (Enquiry e : applicant.getEnquiries()) {
+                    if (e.getEnquiryId().equals(enquiryId)) {
+                        e.setReply(replyMessage);
+                        break;
+                    }
+                }
+                applicantRepo.update(applicant);
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Processes an application (approve or reject).
+     * 
+     * @param applicationId The ID of the application to process.
+     * @param officer The officer processing the application.
+     * @param approve true to approve, false to reject.
+     * @return true if successful, false otherwise.
+     */
+    public boolean processApplication(String applicationId, HdbOfficer officer, boolean approve) {
+        if (applicationId == null || officer == null) {
+            return false;
+        }
+        
+        Application application = applicationRepo.findById(applicationId).orElse(null);
+        if (application == null) return false;
+        
+        // Check if officer is assigned to the project
+        Project project = projectRepo.findById(application.getProjectId()).orElse(null);
+        if (project == null) return false;
+        
+        if (!isOfficerAssigned(officer, project)) {
+            return false; // Not authorized
+        }
+        
+        // Check if application is in a state that can be processed
+        if (application.getStatus() != ApplStatus.PENDING) {
+            return false; // Can only process pending applications
+        }
+        
+        // Update status
+        application.setStatus(approve ? ApplStatus.SUCCESS : ApplStatus.REJECT);
+        applicationRepo.update(application);
+        
+        // Update in applicant's object if present
+        Optional<Applicant> optApplicant = applicantRepo.findById(application.getApplicantId());
+        if (optApplicant.isPresent()) {
+            Applicant applicant = optApplicant.get();
+            if (applicant.getApplication() != null && 
+                applicant.getApplication().getId().equals(applicationId)) {
+                applicant.setApplication(application);
+                applicantRepo.update(applicant);
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Processes a withdrawal request.
+     * 
+     * @param applicationId The ID of the application with withdrawal request.
+     * @param officer The officer processing the request.
+     * @param approve true to approve withdrawal, false to reject it.
+     * @return true if successful, false otherwise.
+     */
+    public boolean processWithdrawalRequest(String applicationId, HdbOfficer officer, boolean approve) {
+        if (applicationId == null || officer == null) {
+            return false;
+        }
+        
+        Application application = applicationRepo.findById(applicationId).orElse(null);
+        if (application == null) return false;
+        
+        // Check if officer is assigned to the project
+        Project project = projectRepo.findById(application.getProjectId()).orElse(null);
+        if (project == null) return false;
+        
+        if (!isOfficerAssigned(officer, project)) {
+            return false; // Not authorized
+        }
+        
+        // Check if application is in withdrawal pending state
+        if (application.getStatus() != ApplStatus.WITHDRAW_PENDING) {
+            return false; // Can only process withdrawal requests
+        }
+        
+        // Update status
+        application.setStatus(approve ? ApplStatus.WITHDRAW_APPROVED : ApplStatus.PENDING);
+        applicationRepo.update(application);
+        
+        // Update in applicant's object if present
+        Optional<Applicant> optApplicant = applicantRepo.findById(application.getApplicantId());
+        if (optApplicant.isPresent()) {
+            Applicant applicant = optApplicant.get();
+            if (applicant.getApplication() != null && 
+                applicant.getApplication().getId().equals(applicationId)) {
+                applicant.setApplication(application);
+                applicantRepo.update(applicant);
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Registers an officer for a project.
+     * 
+     * @param officer The officer to register.
+     * @param project The project to register for.
+     * @return true if successful, false otherwise.
+     */
+    public boolean registerForProject(HdbOfficer officer, Project project) {
+        if (officer == null || project == null) {
+            return false;
+        }
+        
+        // Check if officer is already assigned to this project
+        if (isOfficerAssigned(officer, project)) {
+            return true; // Already assigned
+        }
+        
+        // Check if there are available slots
+        if (project.getOfficers() != null && 
+            project.getOfficerSlots() != null && 
+            project.getOfficers().size() >= project.getOfficerSlots()) {
+            return false; // No slots available
+        }
+        
+        // Add officer to project
+        if (project.getOfficers() == null) {
+            project.setOfficers(new ArrayList<>());
+        }
+        project.getOfficers().add(officer);
+        
+        // Set officer status
+        officer.setStatus(OfficerStatus.ASSIGNED);
+        
+        // Save changes
+        projectRepo.update(project);
+        officerRepo.update(officer);
+        
+        return true;
     }
 }

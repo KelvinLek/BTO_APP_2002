@@ -1,4 +1,3 @@
-﻿Name,NRIC,Age,Marital Status,Password
-Daniel,T2109876H,20 06 1989,Single,password
-Emily,S6543210I,10 02 1997,Single,password
-David,T1234567J,05 11 1996,Married,password
+ID|Name|DOB|MaritalStatus|Role|Password|Status
+S6543210I|Emily|10 02 1997|SINGLE|HDBOFFICER|password|AVAILABLE
+T2109876H|Daniel|20 06 1989|SINGLE|HDBOFFICER|password|AVAILABLE
