@@ -2,12 +2,12 @@ package service;
 
 import entity.*;
 import pub_enums.*; // ApplStatus, FlatType, MaritalStatus
+import util.PlaceholderDataUtil;
+
 import java.util.*;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.ZoneId;
-// Import necessary repository interfaces if interacting with data storage
-// import repository.*;
 
 /**
  * Provides services specific to BTO Applicants, handling project viewing,
@@ -15,19 +15,9 @@ import java.time.ZoneId;
  */
 public class ApplicantService extends UserService implements IApplicantService, IEligibilityCheck, IEnquiryService, IApplicantEnquiryView, IApplicantProjectView {
 
-    // Assume repository injection if data persistence is implemented
-    // private final IApplicantRepo applicantRepo; // Assumes Applicant specific repo
-    // private final IApplicationRepo applicationRepo;
-    // private final IProjectRepo projectRepo;
-    // private final IEnquiryRepo enquiryRepo;
-    //
-    // public ApplicantService(IUserRepo userRepo, IApplicantRepo applicantRepo, IApplicationRepo applicationRepo, IProjectRepo projectRepo, IEnquiryRepo enquiryRepo) {
-    //     super(userRepo); // Pass userRepo to parent
-    //     this.applicantRepo = applicantRepo;
-    //     this.applicationRepo = applicationRepo;
-    //     this.projectRepo = projectRepo;
-    //     this.enquiryRepo = enquiryRepo;
-    // }
+    public ApplicantService() {
+        super(); // Default constructor
+    }
 
     // --- IApplicantService Implementation ---
 
@@ -44,7 +34,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
 
         // 1. Get all potentially visible projects (replace with actual repo call)
         // List<Project> allProjects = projectRepo.findAll(); // Example repo call
-        List<Project> allProjects = findAllProjectsPlaceholder(); // Placeholder
+        List<Project> allProjects = PlaceholderDataUtil.findAllProjectsPlaceholder(); // Placeholder
 
         List<Project> availableProjects = new ArrayList<>();
         Date today = new Date(); // Use current date for checking application period
@@ -101,7 +91,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
 
         // 2. Check if applicant already has an active (non-final) application
         // Application existingApp = applicationRepo.findActiveByApplicantId(applicant.getId()); // Example repo call
-        Application existingApp = findActiveApplicationByApplicantPlaceholder(applicant.getId()); // Placeholder
+        Application existingApp = PlaceholderDataUtil.findActiveApplicationByApplicantPlaceholder(applicant.getId()); // Placeholder
         if (existingApp != null) {
             throw new IllegalArgumentException("Applicant already has an active application (ID: " + existingApp.getId() + "). Cannot apply for another project.");
         }
@@ -139,7 +129,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
 
         try {
             // applicationRepo.save(newApplication); // Example repo call
-            saveApplicationPlaceholder(newApplication); // Placeholder
+            PlaceholderDataUtil.saveApplicationPlaceholder(newApplication); // Placeholder
             System.out.println("Application submitted successfully (ID: " + newApplication.getId() + ")");
             // Associate application with applicant (if entity design requires it)
             applicant.setApplication(newApplication);
@@ -162,7 +152,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
         if (applicant == null || applicant.getId() == null) return null;
         // Application app = applicationRepo.findActiveByApplicantId(applicant.getId()); // Example repo call
         // If not found active, maybe find latest? Repo logic needed.
-        Application app = findActiveApplicationByApplicantPlaceholder(applicant.getId()); // Placeholder
+        Application app = PlaceholderDataUtil.findActiveApplicationByApplicantPlaceholder(applicant.getId()); // Placeholder
         return app;
         // Alternatively, return applicant.getApplication() if the entity holds the current one.
     }
@@ -183,7 +173,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
 
         // Find the application to ensure it exists and check its current state
         // Application appToWithdraw = applicationRepo.findById(application.getId()); // Example repo call
-        Application appToWithdraw = findApplicationByIdPlaceholder(application.getId()); // Placeholder
+        Application appToWithdraw = PlaceholderDataUtil.findApplicationByIdPlaceholder(application.getId()); // Placeholder
         if(appToWithdraw == null) {
             throw new NoSuchElementException("Application with ID " + application.getId() + " not found.");
         }
@@ -205,7 +195,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
 
         try {
             // applicationRepo.save(appToWithdraw); // Example repo call
-            saveApplicationPlaceholder(appToWithdraw); // Placeholder
+            PlaceholderDataUtil.saveApplicationPlaceholder(appToWithdraw); // Placeholder
             System.out.println("Withdrawal requested for application ID: " + appToWithdraw.getId());
             return true;
         } catch (Exception e) {
@@ -297,7 +287,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
 
         // 2. Check if applicant already has an active application
         // Application existingApp = applicationRepo.findActiveByApplicantId(applicant.getId()); // Example repo call
-        Application existingApp = findActiveApplicationByApplicantPlaceholder(applicant.getId()); // Placeholder
+        Application existingApp = PlaceholderDataUtil.findActiveApplicationByApplicantPlaceholder(applicant.getId()); // Placeholder
         if (existingApp != null) {
             return false; // Already has an active application
         }
@@ -342,7 +332,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
 
         try {
             // enquiryRepo.save(newEnquiry); // Example repo call
-            saveEnquiryPlaceholder(newEnquiry); // Placeholder
+            PlaceholderDataUtil.saveEnquiryPlaceholder(newEnquiry); // Placeholder
             // Optional: Add enquiry to user's list if entity relationship exists
             if (user instanceof Applicant) {
                 ((Applicant) user).addEnquiry(newEnquiry);
@@ -375,7 +365,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
 
         // 1. Find the existing enquiry
         // Enquiry existingEnquiry = enquiryRepo.findById(enquiry.getEnquiryId()); // Example repo call
-        Enquiry existingEnquiry = findEnquiryByIdPlaceholder(enquiry.getEnquiryId()); // Placeholder
+        Enquiry existingEnquiry = PlaceholderDataUtil.findEnquiryByIdPlaceholder(enquiry.getEnquiryId()); // Placeholder
         if (existingEnquiry == null) {
             throw new NoSuchElementException("Enquiry with ID " + enquiry.getEnquiryId() + " not found.");
         }
@@ -391,7 +381,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
         // 4. Save the updated enquiry
         try {
             // enquiryRepo.save(existingEnquiry); // Example repo call
-            saveEnquiryPlaceholder(existingEnquiry); // Placeholder
+            PlaceholderDataUtil.saveEnquiryPlaceholder(existingEnquiry); // Placeholder
             System.out.println("Enquiry " + existingEnquiry.getEnquiryId() + " edited successfully.");
             return true;
         } catch (Exception e) {
@@ -420,7 +410,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
 
         // 1. Find the existing enquiry
         // Enquiry existingEnquiry = enquiryRepo.findById(enquiryId); // Example repo call
-        Enquiry existingEnquiry = findEnquiryByIdPlaceholder(enquiryId); // Placeholder
+        Enquiry existingEnquiry = PlaceholderDataUtil.findEnquiryByIdPlaceholder(enquiryId); // Placeholder
         if (existingEnquiry == null) {
             throw new NoSuchElementException("Enquiry with ID " + enquiryId + " not found.");
         }
@@ -433,7 +423,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
         // 3. Delete the enquiry
         try {
             // enquiryRepo.deleteById(enquiryId); // Example repo call
-            deleteEnquiryPlaceholder(enquiryId); // Placeholder
+            PlaceholderDataUtil.deleteEnquiryPlaceholder(enquiryId); // Placeholder
             // Optional: Remove from user's list if entity relationship exists
             if (deleter instanceof Applicant) {
                 // Need a removeEnquiry method in Applicant entity or handle here
@@ -462,7 +452,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
             return Collections.emptyList();
         }
         // return enquiryRepo.findByApplicantId(applicant.getId()); // Example repo call
-        return findEnquiriesByApplicantPlaceholder(applicant.getId()); // Placeholder
+        return PlaceholderDataUtil.findEnquiriesByApplicantPlaceholder(applicant.getId()); // Placeholder
         // Or return applicant.getEnquiries() if the list is maintained within the entity
     }
 
@@ -480,7 +470,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
             return null;
         }
         // Enquiry enquiry = enquiryRepo.findById(enquiryId); // Example repo call
-        Enquiry enquiry = findEnquiryByIdPlaceholder(enquiryId); // Placeholder
+        Enquiry enquiry = PlaceholderDataUtil.findEnquiryByIdPlaceholder(enquiryId); // Placeholder
 
         if (enquiry == null) {
             return null; // Not found
@@ -521,7 +511,7 @@ public class ApplicantService extends UserService implements IApplicantService, 
         if (projectId == null || applicant == null) return null;
 
         // Project project = projectRepo.findById(projectId); // Example repo call
-        Project project = findProjectByIdPlaceholder(projectId); // Placeholder
+        Project project = PlaceholderDataUtil.findProjectByIdPlaceholder(projectId); // Placeholder
 
         if (project == null) return null; // Not found
 
@@ -623,95 +613,4 @@ public class ApplicantService extends UserService implements IApplicantService, 
         }
         return filteredList;
     }
-
-
-    //TODO remove and adjust
-    // --- Placeholder methods for Repository Interactions ---
-    // Replace these with actual calls to your repository implementation
-
-    private List<Project> findAllProjectsPlaceholder() {
-        // Simulate finding all projects
-        List<Project> projects = new ArrayList<>();
-        // Project 1 (Visible, Open)
-        Project p1 = new Project("SkyVista @ Dawson", "Queenstown", new Date(System.currentTimeMillis() - 86400000 * 5), new Date(System.currentTimeMillis() + 86400000 * 10), null, null);
-        p1.setProjectId("P1001");
-        p1.setVisible(true);
-        List<Flat> p1Flats = new ArrayList<>();
-        p1Flats.add(new Flat(FlatType.TWOROOM, 50, 10, 150000));
-        p1Flats.add(new Flat(FlatType.THREEROOM, 100, 20, 300000));
-        p1.setFlats(p1Flats);
-        projects.add(p1);
-
-        // Project 2 (Visible, Closed)
-        Project p2 = new Project("Greenery Grove", "Tampines", new Date(System.currentTimeMillis() - 86400000 * 30), new Date(System.currentTimeMillis() - 86400000 * 5), null, null);
-        p2.setProjectId("P1002");
-        p2.setVisible(true);
-        List<Flat> p2Flats = new ArrayList<>();
-        p2Flats.add(new Flat(FlatType.TWOROOM, 80, 5, 130000));
-        p2.setFlats(p2Flats);
-        projects.add(p2);
-
-        // Project 3 (Hidden, Open)
-        Project p3 = new Project("Woodlands Weave", "Woodlands", new Date(System.currentTimeMillis() - 86400000 * 2), new Date(System.currentTimeMillis() + 86400000 * 15), null, null);
-        p3.setProjectId("P1003");
-        p3.setVisible(false);
-        List<Flat> p3Flats = new ArrayList<>();
-        p3Flats.add(new Flat(FlatType.THREEROOM, 120, 30, 280000));
-        p3.setFlats(p3Flats);
-        projects.add(p3);
-
-        return projects;
-    }
-
-    private Application findActiveApplicationByApplicantPlaceholder(String applicantId) {
-        // Simulate finding an active application (PENDING, SUCCESSFUL, WITHDRAW_PENDING, BOOKED?)
-        // This user has no active app
-        if ("S1234567A".equalsIgnoreCase(applicantId)) return null;
-        // This user might have one - check status
-        // Return null for now
-        return null;
-    }
-    private Application findApplicationByIdPlaceholder(String appId) {
-        // Simulate finding an application by ID
-        // Return null for now
-        return null;
-    }
-
-    private Project findProjectByIdPlaceholder(String projectId) {
-        for(Project p : findAllProjectsPlaceholder()){
-            if(p.getProjectId().equals(projectId)) return p;
-        }
-        return null;
-    }
-
-
-    private void saveApplicationPlaceholder(Application app) throws Exception {
-        System.out.println("Placeholder: Saving application ID " + app.getId());
-    }
-
-    private Enquiry findEnquiryByIdPlaceholder(String enquiryId) {
-        // Simulate finding an enquiry
-        if ("E9001".equals(enquiryId)){
-            return new Enquiry(enquiryId, "S1234567A", "P1001", "When is the completion date?", null);
-        }
-        return null;
-    }
-
-    private List<Enquiry> findEnquiriesByApplicantPlaceholder(String applicantId) {
-        List<Enquiry> enquiries = new ArrayList<>();
-        if ("S1234567A".equalsIgnoreCase(applicantId)) {
-            enquiries.add(new Enquiry("E9001", applicantId, "P1001", "When is the completion date?", null));
-            enquiries.add(new Enquiry("E9002", applicantId, "P1001", "Can I choose my unit?", "Unit selection is later."));
-        }
-        return enquiries;
-    }
-
-    private void saveEnquiryPlaceholder(Enquiry enquiry) throws Exception {
-        System.out.println("Placeholder: Saving enquiry ID " + enquiry.getEnquiryId());
-    }
-
-    private void deleteEnquiryPlaceholder(String enquiryId) throws Exception {
-        System.out.println("Placeholder: Deleting enquiry ID " + enquiryId);
-    }
-
 }

@@ -11,7 +11,7 @@ import java.util.*; // For List, Map
  */
 public class ApplicantController extends UserController {
 
-    private final ApplicantService applicantService; // Use concrete type if methods are specific, or interfaces
+    public final ApplicantService applicantService; // Changed to public for access in view layer
 
     /**
      * Constructor for ApplicantController.

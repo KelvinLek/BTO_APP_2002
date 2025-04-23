@@ -1356,6 +1356,23 @@ public class CLIView {
         }
     }
 
+    private int getIntInput(String prompt, int min) {
+        while (true) {
+            System.out.print(prompt);
+            try {
+                int value = Integer.parseInt(scanner.nextLine());
+                if (value >= min) {
+                    return value;
+                } else {
+                    System.out.println("Value must be " + min + " or greater.");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input. Please enter a number.");
+            }
+        }
+    }
+
+
     /**
      * Gets integer input, allowing empty input.
      * @param prompt Prompt message including current value.

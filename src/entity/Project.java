@@ -13,6 +13,7 @@ public class Project {
     private Date appClose;
     private HdbManager manager;
     private List<HdbOfficer> officers;
+    private Integer officerSlots;
 
     public Project(String projName, String projId, String neighbourhood, Date appOpen, Date appClose, HdbManager manager, List<HdbOfficer> officers) {
         this.projName = projName;
@@ -23,6 +24,22 @@ public class Project {
         this.officers = officers;
         this.projId = projId;
         this.visible = true;
+        this.officerSlots = 5; // Default value
+
+        //TODO implement Flat as a composition
+    }
+
+    public Project(String projName, String projId, Boolean visible, String neighbourhood, List<Flat> flats, Date appOpen, Date appClose, HdbManager manager, List<HdbOfficer> officers, Integer officerSlots) {
+        this.projName = projName;
+        this.projId = projId;
+        this.visible = visible;
+        this.neighbourhood = neighbourhood;
+        this.flats = flats;
+        this.appOpen = appOpen;
+        this.appClose = appClose;
+        this.manager = manager;
+        this.officers = officers;
+        this.officerSlots = officerSlots;
 
         //TODO implement Flat as a composition
     }
@@ -37,6 +54,19 @@ public class Project {
         this.appClose = appClose;
         this.manager = manager;
         this.officers = officers;
+        this.officerSlots = 5; // Default value
+    }
+
+    // Constructor for placeholder/test data
+    public Project(String projName, String neighbourhood, Date appOpen, Date appClose, HdbManager manager, List<HdbOfficer> officers) {
+        this.projName = projName;
+        this.neighbourhood = neighbourhood;
+        this.appOpen = appOpen;
+        this.appClose = appClose;
+        this.manager = manager;
+        this.officers = officers;
+        this.visible = true;
+        this.officerSlots = 5; // Default value
     }
 
     public String getProjName() {
@@ -113,5 +143,13 @@ public class Project {
 
     public boolean isVisible() {
         return visible;
+    }
+
+    public Integer getOfficerSlots() {
+        return officerSlots;
+    }
+
+    public void setOfficerSlots(Integer officerSlots) {
+        this.officerSlots = officerSlots;
     }
 }

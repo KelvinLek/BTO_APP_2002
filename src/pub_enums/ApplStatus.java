@@ -5,5 +5,5 @@ public enum ApplStatus {
     SUCCESS,
     REJECT,
     BOOKED,
-    WITHDRAW_PENDING,
+    WITHDRAW_PENDING, WITHDRAW_APPROVED,
 }

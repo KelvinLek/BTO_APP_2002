@@ -11,7 +11,7 @@ import java.util.*;
  */
 public class HdbOfficerController extends ApplicantController {
 
-    private final HdbOfficerService officerService; // Concrete type or interfaces as needed
+    public final HdbOfficerService officerService; // Changed to public for access in view layer
 
     /**
      * Constructor for HdbOfficerController.

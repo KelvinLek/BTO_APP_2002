@@ -51,7 +51,7 @@ public class Main {
         CLIView cliView = new CLIView(userController, applicantController, hdbOfficerController, hdbManagerController);
 
         // --- Start Application ---
-        cliView.start();
+        cliView.run();
 
         System.out.println("Exiting BTO Management System. Goodbye!");
     }

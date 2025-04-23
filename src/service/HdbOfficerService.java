@@ -2,44 +2,18 @@ package service;
 
 import entity.*;
 import pub_enums.*;
-import java.util.*;
-// Import necessary repository interfaces if interacting with data storage
-// import repository.*;
+import util.PlaceholderDataUtil;
 
-/**
- * Provides services specific to HDB Officers, including project registration,
- * viewing assigned projects/enquiries, replying to enquiries, and booking flats.
- * Inherits Applicant capabilities.
- */
+import java.util.*;
+
 public class HdbOfficerService extends ApplicantService implements IBookFlatService, IEnquiryViewable, IHdbOfficerService, IOfficerProjectView, IOfficerEnquiryView, IReplyable {
 
-    // Assume repository injection
-    // private final IHdbOfficerRepo officerRepo; // Specific repo for officer data/status
-    // private final IReceiptService receiptService; // May need receipt service for generation
-
-    // Constructor example (adjust based on actual dependencies)
-    // public HdbOfficerService(IUserRepo userRepo, IApplicantRepo applicantRepo, IApplicationRepo applicationRepo,
-    //                          IProjectRepo projectRepo, IEnquiryRepo enquiryRepo, IHdbOfficerRepo officerRepo,
-    //                          IReceiptService receiptService) {
-    //     super(userRepo, applicantRepo, applicationRepo, projectRepo, enquiryRepo); // Call parent constructor
-    //     this.officerRepo = officerRepo;
-    //     this.receiptService = receiptService;
-    // }
-
+    public HdbOfficerService() {
+        super(); // Call the parent constructor
+    }
 
     // --- IHdbOfficerService Implementation ---
 
-    /**
-     * Registers an HDB Officer's interest for a project. Sets status to Pending.
-     * Checks eligibility (no overlap, hasn't applied as applicant).
-     *
-     * @param officer   The HdbOfficer registering.
-     * @param project   The Project to register for.
-     * @return true if registration request logged successfully.
-     * @throws NoSuchElementException   If officer/project not found.
-     * @throws IllegalStateException    If ineligible.
-     * @throws Exception                For persistence errors.
-     */
     @Override
     public boolean registerForProject(HdbOfficer officer, Project project) throws NoSuchElementException, IllegalStateException, Exception {
         if (officer == null || project == null) {
@@ -50,7 +24,7 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
         }
 
         // 1. Check if Officer has applied for this project as an Applicant
-        Application existingApp = findActiveApplicationByApplicantPlaceholder(officer.getId()); // Placeholder
+        Application existingApp = PlaceholderDataUtil.findActiveApplicationByApplicantPlaceholder(officer.getId());
         if(existingApp != null && existingApp.getProjectId().equals(project.getProjectId())){
             throw new IllegalStateException("Officer cannot register for a project they have applied to as an applicant.");
         }
@@ -68,7 +42,6 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
             }
         }
 
-
         // 3. Update officer's status or log request (Implementation depends on how pending requests are tracked)
         // Option A: Set a generic status on the officer object
         officer.setStatus("PENDING_REGISTRATION_" + project.getProjectId()); // Example status
@@ -80,7 +53,7 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
         try {
             // Save the updated officer status or the new request
             // officerRepo.save(officer); // Example for Option A
-            saveUserPlaceholder(officer); // Placeholder
+            PlaceholderDataUtil.saveUserPlaceholder(officer);
             System.out.println("Officer " + officer.getId() + " registration request submitted for project " + project.getProjectId());
             return true;
         } catch (Exception e) {
@@ -89,14 +62,6 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
         }
     }
 
-    /**
-     * Retrieves the registration status for an officer and project.
-     *
-     * @param officer The HdbOfficer.
-     * @param project The Project.
-     * @return String representing the status (e.g., "Pending Registration", "Approved", "Rejected", "Not Registered").
-     * @throws NoSuchElementException if officer or project not found.
-     */
     @Override
     public String viewRegistrationStatus(HdbOfficer officer, Project project) throws NoSuchElementException {
         if (officer == null || project == null || officer.getId() == null || project.getProjectId() == null) {
@@ -134,22 +99,8 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
         return "Not Registered"; // Default if no specific status found
     }
 
-
     // --- IBookFlatService Implementation ---
 
-    /**
-     * Books a flat for an applicant with a successful application.
-     * Updates application status to Booked, decrements project flat count.
-     *
-     * @param application The successful Application.
-     * @param flatType    The FlatType being booked.
-     * @param officer     The HdbOfficer performing the booking.
-     * @return true if booking successful.
-     * @throws NoSuchElementException   If application/project/officer not found.
-     * @throws IllegalStateException    If application status isn't Successful or no units available.
-     * @throws SecurityException        If officer not assigned/approved for the project.
-     * @throws Exception                For persistence errors.
-     */
     @Override
     public boolean bookFlat(Application application, FlatType flatType, HdbOfficer officer) throws NoSuchElementException, IllegalStateException, SecurityException, Exception {
         if (application == null || flatType == null || officer == null || application.getId() == null || application.getProjectId() == null || officer.getId() == null) {
@@ -157,7 +108,7 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
         }
 
         // 1. Verify officer is assigned and approved for this project
-        Project project = findProjectByIdPlaceholder(application.getProjectId()); // Placeholder
+        Project project = PlaceholderDataUtil.findProjectByIdPlaceholder(application.getProjectId());
         if(project == null){
             throw new NoSuchElementException("Project " + application.getProjectId() + " not found.");
         }
@@ -170,16 +121,15 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
                 }
             }
         }
-        if(!isAssigned || !"Approved".equals(viewRegistrationStatus(officer, project)) /* More robust status check */) {
+        if(!isAssigned || !"Approved".equals(viewRegistrationStatus(officer, project))) {
             throw new SecurityException("Officer " + officer.getId() + " is not authorized to book flats for project " + project.getProjectId());
         }
 
         // 2. Find the application again to work with the persisted state
-        Application appToBook = findApplicationByIdPlaceholder(application.getId()); // Placeholder
+        Application appToBook = PlaceholderDataUtil.findApplicationByIdPlaceholder(application.getId());
         if(appToBook == null) {
             throw new NoSuchElementException("Application with ID " + application.getId() + " not found.");
         }
-
 
         // 3. Check application status is "Successful"
         if (appToBook.getStatus() != ApplStatus.SUCCESS) {
@@ -207,18 +157,16 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
             throw new IllegalStateException("Selected flat type " + flatType + " not found or could not be booked in project " + project.getProjName());
         }
 
-
         // 5. Update application status to "Booked"
         appToBook.setStatus(ApplStatus.BOOKED);
         // Optionally update applicant's main status if needed:
         // Applicant applicant = findUserByIdPlaceholder(appToBook.getApplicantId());
         // if (applicant instanceof Applicant) { ((Applicant)applicant).setStatus("Booked"); saveUserPlaceholder(applicant);}
 
-
         // 6. Save changes (atomicity needed in real systems)
         try {
-            saveApplicationPlaceholder(appToBook); // Save application status
-            saveProjectPlaceholder(project); // Save updated flat counts
+            PlaceholderDataUtil.saveApplicationPlaceholder(appToBook); // Save application status
+            PlaceholderDataUtil.saveProjectPlaceholder(project); // Save updated flat counts
             System.out.println("Flat " + flatType + " booked successfully for application " + appToBook.getId());
             // Generate receipt (could be done here or separately)
             // generateReceipt(appToBook, officer); // Requires IReceiptService
@@ -232,67 +180,44 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
         }
     }
 
-
     // --- IEnquiryViewable Implementation ---
     // Provides generic viewing capabilities, potentially overlapping with role-specific views
 
-    /**
-     * Retrieves all enquiries for a specific project.
-     * @param projectId The project ID.
-     * @return List of enquiries.
-     */
     @Override
     public List<Enquiry> viewEnquiriesByProject(UUID projectId) {
         if(projectId == null) return Collections.emptyList();
-        return findEnquiriesByProjectPlaceholder(projectId.toString()); // Placeholder
+        return PlaceholderDataUtil.findEnquiriesByProjectPlaceholder(projectId.toString());
     }
 
-    /**
-     * Retrieves all enquiries submitted by a specific applicant.
-     * @param applicantId The applicant's ID.
-     * @return List of enquiries.
-     */
     @Override
     public List<Enquiry> viewEnquiriesByApplicant(String applicantId) {
         if(applicantId == null) return Collections.emptyList();
-        return findEnquiriesByApplicantPlaceholder(applicantId); // Placeholder
+        return PlaceholderDataUtil.findEnquiriesByApplicantPlaceholder(applicantId);
     }
 
-    /**
-     * Retrieves all enquiries (Use with caution).
-     * @return List of all enquiries.
-     */
     @Override
     public List<Enquiry> viewAllEnquiries() {
-        return findAllEnquiriesPlaceholder(); // Placeholder
+        List<Enquiry> allEnquiries = new ArrayList<>();
+        // Collect from all projects
+        for (Project project : PlaceholderDataUtil.findAllProjectsPlaceholder()) {
+            allEnquiries.addAll(PlaceholderDataUtil.findEnquiriesByProjectPlaceholder(project.getProjectId()));
+        }
+        return allEnquiries;
     }
 
-    /**
-     * Retrieves a single enquiry by ID.
-     * @param enquiryId The enquiry ID.
-     * @return The Enquiry or null.
-     */
     @Override
     public Enquiry viewEnquiryById(String enquiryId) {
         if(enquiryId == null) return null;
-        return findEnquiryByIdPlaceholder(enquiryId); // Placeholder
+        return PlaceholderDataUtil.findEnquiryByIdPlaceholder(enquiryId);
     }
-
 
     // --- IOfficerProjectView Implementation ---
 
-    /**
-     * Retrieves details of a project the officer is assigned to.
-     * @param projectId The project ID.
-     * @param officer   The HdbOfficer viewing.
-     * @return The Project or null.
-     * @throws SecurityException If officer not assigned.
-     */
     @Override
     public Project viewAssignedProjectDetails(String projectId, HdbOfficer officer) throws SecurityException {
         if (projectId == null || officer == null || officer.getId() == null) return null;
 
-        Project project = findProjectByIdPlaceholder(projectId); // Placeholder
+        Project project = PlaceholderDataUtil.findProjectByIdPlaceholder(projectId);
         if(project == null) return null; // Not found
 
         // Verify assignment
@@ -312,11 +237,6 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
         return project;
     }
 
-    /**
-     * Retrieves the list of projects the officer is assigned to.
-     * @param officer The HdbOfficer.
-     * @return List of assigned Projects.
-     */
     @Override
     public List<Project> viewMyAssignedProjects(HdbOfficer officer) {
         if (officer == null) return Collections.emptyList();
@@ -325,16 +245,8 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
         return (assigned != null) ? assigned : Collections.emptyList();
     }
 
-
     // --- IOfficerEnquiryView Implementation ---
 
-    /**
-     * Retrieves enquiries for a project the officer is assigned to.
-     * @param projectId The project ID.
-     * @param officer   The HdbOfficer viewing.
-     * @return List of enquiries.
-     * @throws SecurityException If officer not assigned.
-     */
     @Override
     public List<Enquiry> viewEnquiriesByAssignedProject(String projectId, HdbOfficer officer) throws SecurityException {
         if (projectId == null || officer == null || officer.getId() == null) return Collections.emptyList();
@@ -343,21 +255,14 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
         viewAssignedProjectDetails(projectId, officer); // This throws SecurityException if not assigned
 
         // If assigned, fetch enquiries for that project
-        return findEnquiriesByProjectPlaceholder(projectId); // Placeholder
+        return PlaceholderDataUtil.findEnquiriesByProjectPlaceholder(projectId);
     }
 
-    /**
-     * Retrieves a single enquiry by ID if it belongs to an assigned project.
-     * @param enquiryId The enquiry ID.
-     * @param officer   The HdbOfficer viewing.
-     * @return The Enquiry or null.
-     * @throws SecurityException If officer cannot view this enquiry.
-     */
     @Override
     public Enquiry viewAssignedEnquiryById(String enquiryId, HdbOfficer officer) throws SecurityException {
         if (enquiryId == null || officer == null || officer.getId() == null) return null;
 
-        Enquiry enquiry = findEnquiryByIdPlaceholder(enquiryId); // Placeholder
+        Enquiry enquiry = PlaceholderDataUtil.findEnquiryByIdPlaceholder(enquiryId);
         if (enquiry == null) return null; // Not found
 
         // Check if the enquiry's project is one the officer is assigned to
@@ -371,19 +276,8 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
         }
     }
 
-
     // --- IReplyable Implementation ---
 
-    /**
-     * Adds a reply to an enquiry. Checks if officer is assigned to the project.
-     * @param enquiry      The Enquiry to reply to.
-     * @param replyText    The reply message.
-     * @param replyingUser The User replying (must be HdbOfficer or HdbManager).
-     * @return true if reply successful.
-     * @throws NoSuchElementException If enquiry not found.
-     * @throws SecurityException      If user lacks permission.
-     * @throws Exception              For persistence errors.
-     */
     @Override
     public boolean replyToEnquiry(Enquiry enquiry, String replyText, User replyingUser) throws NoSuchElementException, SecurityException, Exception {
         if (enquiry == null || enquiry.getEnquiryId() == null || replyText == null || replyText.trim().isEmpty() || replyingUser == null || replyingUser.getId() == null) {
@@ -391,7 +285,7 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
         }
 
         // 1. Find the existing enquiry
-        Enquiry existingEnquiry = findEnquiryByIdPlaceholder(enquiry.getEnquiryId()); // Placeholder
+        Enquiry existingEnquiry = PlaceholderDataUtil.findEnquiryByIdPlaceholder(enquiry.getEnquiryId());
         if (existingEnquiry == null) {
             throw new NoSuchElementException("Enquiry with ID " + enquiry.getEnquiryId() + " not found.");
         }
@@ -415,14 +309,12 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
             throw new SecurityException("User " + replyingUser.getId() + " (Role: " + replyingUser.getRole() + ") is not authorized to reply to enquiry " + existingEnquiry.getEnquiryId());
         }
 
-
         // 3. Update the reply
         existingEnquiry.setReply(replyText + " [Replied by: " + replyingUser.getId() + "]"); // Add who replied
 
-
         // 4. Save the updated enquiry
         try {
-            saveEnquiryPlaceholder(existingEnquiry); // Placeholder
+            PlaceholderDataUtil.saveEnquiryPlaceholder(existingEnquiry);
             System.out.println("Reply added to enquiry " + existingEnquiry.getEnquiryId() + " by " + replyingUser.getId());
             return true;
         } catch (Exception e) {
@@ -431,34 +323,4 @@ public class HdbOfficerService extends ApplicantService implements IBookFlatServ
             throw new Exception("Failed to save enquiry reply.", e);
         }
     }
-
-//TODO REMOVE
-    // --- Additional Placeholder methods for Repository Interactions ---
-
-    private List<Enquiry> findEnquiriesByProjectPlaceholder(String projectId) {
-        List<Enquiry> enquiries = new ArrayList<>();
-        if ("P1001".equals(projectId)){
-            enquiries.add(new Enquiry("E9001", "S1234567A", projectId, "When is the completion date?", null));
-            enquiries.add(new Enquiry("E9002", "S1234567A", projectId, "Can I choose my unit?", "Unit selection is later."));
-        } else if ("P1003".equals(projectId)){
-            enquiries.add(new Enquiry("E9003", "S9999999Z", projectId, "Is parking included?", null));
-        }
-        return enquiries;
-    }
-
-    private List<Enquiry> findAllEnquiriesPlaceholder() {
-        List<Enquiry> all = new ArrayList<>();
-        all.addAll(findEnquiriesByProjectPlaceholder("P1001"));
-        all.addAll(findEnquiriesByProjectPlaceholder("P1003"));
-        // Add more from other simulated projects if needed
-        return all;
-    }
-
-
-    private void saveProjectPlaceholder(Project project) throws Exception {
-        System.out.println("Placeholder: Saving project ID " + project.getProjectId());
-    }
-
-    // Inherits other placeholders from ApplicantService via extension
-
 }

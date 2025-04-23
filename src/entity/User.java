@@ -8,7 +8,7 @@ import java.time.Period;
 import java.time.ZoneId;
 import java.util.Date;
 
-public class User {
+public abstract class User {
     private String name;
     private String id;
     private Date dob;
