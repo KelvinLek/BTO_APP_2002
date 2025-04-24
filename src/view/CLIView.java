@@ -427,11 +427,11 @@ public class CLIView {
         
         if (getConfirmation("Confirm application for " + selectedProject.getProjName() + "? (Y/N): ")) {
             boolean result = applicantController.applyForProject(applicant, selectedProject);
-            if (result) {
-                System.out.println("Application submitted successfully.");
-            } else {
-                System.out.println("Application submission failed.");
-            }
+//            if (result) {
+//                System.out.println("Application submitted successfully.");
+//            } else {
+//                System.out.println("Application submission failed.");
+//            }
         } else {
             System.out.println("Application cancelled.");
         }
