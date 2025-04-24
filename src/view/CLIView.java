@@ -8,6 +8,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.NoSuchElementException;
+import java.util.regex.Pattern;
 
 /**
  * Provides a Command Line Interface (CLI) for interacting with the BTO Management System.
@@ -164,7 +165,7 @@ public class CLIView {
                 handleDeleteEnquiry(applicant);
                 break;
             case 10:
-                handleChangePassword();
+                if (handleChangePassword()) { return false; } // logout after successful password change
                 break;
             case 11:
                 return false; // Signal logout
@@ -219,7 +220,7 @@ public class CLIView {
                 handleProcessWithdrawalRequest(officer);
                 break;
             case 9:
-                handleChangePassword();
+                if (handleChangePassword()) { return false; } // logout after successful password change
                 break;
             case 10:
                 return false; // Signal logout
@@ -273,7 +274,7 @@ public class CLIView {
                 handleGenerateReport(manager);
                 break;
             case 9:
-                handleChangePassword();
+                if (handleChangePassword()) { return false; } // logout after successful password change
                 break;
             case 10:
                 return false; // Signal logout
@@ -287,13 +288,26 @@ public class CLIView {
     // --- Input Handling ---
 
     private void handleLoginAttempt() {
-        System.out.println("\n--- Login ---");
-        String userId = getStringInput("Enter ID: ");
-        String password = getPasswordInput("Enter Password: ");
-        currentUser = userController.login(userId, password);
+        try {
+            System.out.println("\n--- Login ---");
+            String userId = getStringInput("Enter ID: ");
+            checkValidIdFormat(userId); // Test case 2: NRIC format notification
+            userId = userId.toUpperCase(); // in case they key in lowercase, we store in uppercase
+            String password = getPasswordInput("Enter Password: ");
+            currentUser = userController.login(userId, password);
+        }
+        catch (IllegalArgumentException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
-    private void handleChangePassword() {
+    private void checkValidIdFormat(String id) {
+        if (!Pattern.matches("^[sStTfFgGmM]\\d{7}[a-zA-Z]$", id)) {
+            throw new IllegalArgumentException("Invalid NRIC format");
+        }
+    }
+
+    private boolean handleChangePassword() {
         System.out.println("\n--- Change Password ---");
         String oldPassword = getPasswordInput("Enter Current Password: ");
         String newPassword = getPasswordInput("Enter New Password: ");
@@ -301,10 +315,15 @@ public class CLIView {
 
         if (!newPassword.equals(confirmPassword)) {
             displayMessage("New passwords do not match. Please try again.");
-            return;
         }
-
-        userController.changePassword(currentUser, oldPassword, newPassword);
+        else{
+            boolean result = userController.changePassword(currentUser, oldPassword, newPassword);
+            if (result) {
+                System.out.println("Password successfully changed. Please re-login.");
+                return true;
+            }
+        }
+        return false;
     }
 
     // --- Applicant Handlers ---
