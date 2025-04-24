@@ -6,12 +6,12 @@ This project is a Command Line Interface (CLI) application developed as part of 
 
 Users log in using their NRIC (User ID) and a password. The system manages user profiles, project listings, applications, enquiries, and reporting based on user roles.
 
-![UML Class Diagram.jpg](UML%20Class%20Diagram.jpg)
-
+![UML_Class_Diagram.jpg](diagrams/UML_Class_Diagram.jpg)
+![More_diagrams.png](diagrams/More_diagrams.png)
 ## Features
 
 The system implements functionalities based on three distinct user roles:
-
+![UMLClassDiagramEntities.jpg](diagrams/UMLClassDiagramEntities.jpg)
 **1. Applicant:**
 * View available BTO projects (filtered based on eligibility and visibility).
 * Apply for a single BTO project (eligibility checks based on age and marital status).
