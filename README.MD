@@ -64,6 +64,14 @@ The system implements functionalities based on three distinct user roles:
 * **Interface:** Command Line Interface (CLI)
 * **Data Storage:** CSV files (No database, JSON, or XML).
 
+## Project Directory Structure
+
+Beyond the main source code located in `src/`, this project utilizes the following directories:
+
+* **`data/`**: Contains CSV files and any other raw data used by the application.
+* **`diagrams/`**: Holds image files for UML diagrams, such as class diagrams and sequence diagrams, illustrating the project's design.
+* **`documents/`**: Stores project planning documents, initial design diagrams, and generated documentation like Javadoc.
+
 ## Project Structure
 
 The project follows a layered architecture pattern:
