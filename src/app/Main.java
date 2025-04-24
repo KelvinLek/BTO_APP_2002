@@ -7,10 +7,15 @@ import service.*;
 import view.CLIView;
 
 /**
- * Main application class to bootstrap the BTO Management System.
+ * Main application class to bootstrap and enter the BTO Management System.
  * Initializes repositories, services, controllers, and the view, then starts the application.
  */
 public class Main {
+    /**
+     * The main method that launches the BTO application.
+     * Creates the CLI view and the main user controller, then starts the controller.
+     * @param args Command line arguments (not utilized in this application).
+     */
     public static void main(String[] args) {
         System.out.println("Starting BTO Management System...");
 

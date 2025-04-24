@@ -31,6 +31,10 @@ public class CLIView {
     /**
      * Constructor for CLIView.
      * Injects the required controllers.
+     * @param uc The UserController instance.
+     * @param ac The ApplicantController instance.
+     * @param hoc The HdbOfficerController instance.
+     * @param hmc The HdbManagerController instance.
      */
     public CLIView(UserController uc, ApplicantController ac, HdbOfficerController hoc, HdbManagerController hmc) {
         this.scanner = new Scanner(System.in);
@@ -41,7 +45,7 @@ public class CLIView {
     }
 
     /**
-     * Starts the main application loop.
+     * Starts the main application loop, handling login attempts and routing to role-specific menus.
      */
     public void run() {
         System.out.println("============================================");
@@ -83,6 +87,9 @@ public class CLIView {
 
     // --- Menu Display ---
 
+    /**
+     * Displays the main menu (Login/Exit).
+     */
     private void displayMainMenu() {
         System.out.println("\n--- Main Menu ---");
         System.out.println("1. Login");
@@ -90,6 +97,10 @@ public class CLIView {
         System.out.println("-----------------");
     }
 
+    /**
+     * Routes the logged-in user to their respective role-based menu.
+     * Handles the logout process and restarts the main loop.
+     */
     private void routeToRoleMenu() {
         if (currentUser == null) {
             displayMessage("Error: No user logged in.");
@@ -121,7 +132,11 @@ public class CLIView {
         run(); // Restart the main loop to show login screen again
     }
 
-
+    /**
+     * Displays the menu options available to an Applicant user and handles their choice.
+     *
+     * @return false if the user chooses to logout, true otherwise (to continue showing the menu).
+     */
     private boolean displayApplicantMenu() {
         System.out.println("\n--- Applicant Menu ---");
         System.out.println("1. View Available Projects");
@@ -287,6 +302,11 @@ public class CLIView {
         return true; // Continue showing menu
     }
 
+    /**
+     * Displays the menu options available to an HDB Manager user and handles their choice.
+     *
+     * @return false if the user chooses to logout, true otherwise (to continue showing the menu).
+     */
     private boolean displayManagerMenu() {
         System.out.println("\n--- HDB Manager Menu ---");
         System.out.println("1. View All Projects");
@@ -347,6 +367,9 @@ public class CLIView {
 
     // --- Input Handling ---
 
+    /**
+     * Handles the user login process, prompting for ID and password, and validating credentials.
+     */
     private void handleLoginAttempt() {
         try {
             System.out.println("\n--- Login ---");
@@ -360,13 +383,22 @@ public class CLIView {
             System.out.println("Error: " + e.getMessage());
         }
     }
-
+    /**
+     * Checks if the provided ID string matches the NRIC format.
+     * @param id The ID string to validate.
+     * @throws IllegalArgumentException if the ID format is invalid.
+     */
     private void checkValidIdFormat(String id) {
         if (!Pattern.matches("^[sStTfFgGmM]\\d{7}[a-zA-Z]$", id)) {
             throw new IllegalArgumentException("Invalid NRIC format");
         }
     }
 
+    /**
+     * Handles the password change process for the current user.
+     * Prompts for old and new passwords, confirms the new password, and calls the controller.
+     * @return true if the password was successfully changed (triggers logout), false otherwise.
+     */
     private boolean handleChangePassword() {
         System.out.println("\n--- Change Password ---");
         String oldPassword = getPasswordInput("Enter Current Password: ");
@@ -388,12 +420,20 @@ public class CLIView {
 
     // --- Applicant Handlers ---
 
+    /**
+     * Handles viewing available projects for an applicant.
+     * @param applicant The applicant viewing the projects.
+     */
     private void handleViewAvailableProjects(Applicant applicant) {
         System.out.println("\n--- Available Projects ---");
         List<Project> projects = applicantController.viewAvailableProjects(applicant);
         displayProjectsApplicant(projects);
     }
 
+    /**
+     * Handles filtering projects based on applicant's input criteria.
+     * @param applicant The applicant filtering the projects.
+     */
     private void handleFilterApplicantProjects(Applicant applicant) {
         System.out.println("\n--- Filter Projects ---");
         Map<String, String> filters = getProjectFilters();
@@ -401,6 +441,10 @@ public class CLIView {
         displayProjectsApplicant(projects);
     }
 
+    /**
+     * Handles the process of an applicant applying for a project.
+     * @param applicant The applicant applying for the project.
+     */
     private void handleApplyForProject(Applicant applicant) {
         System.out.println("\n--- Apply for Project ---");
         List<Project> projects = applicantController.viewAvailableProjects(applicant);
@@ -437,6 +481,10 @@ public class CLIView {
         }
     }
 
+    /**
+     * Handles viewing the application status for an applicant.
+     * @param applicant The applicant checking their status.
+     */
     private void handleViewApplicationStatus(Applicant applicant) {
         System.out.println("\n--- Application Status ---");
         Application application = applicantController.checkApplicationStatus(applicant);
@@ -445,6 +493,10 @@ public class CLIView {
         }
     }
 
+    /**
+     * Handles the process of an applicant requesting to withdraw their application.
+     * @param applicant The applicant requesting withdrawal.
+     */
     private void handleRequestWithdrawal(Applicant applicant) {
         System.out.println("\n--- Request Withdrawal ---");
         Application application = applicantController.checkApplicationStatus(applicant);
@@ -476,12 +528,21 @@ public class CLIView {
         }
     }
 
+
+    /**
+     * Handles viewing enquiries submitted by the applicant.
+     * @param applicant The applicant viewing their enquiries.
+     */
     private void handleViewMyEnquiries(Applicant applicant) {
         System.out.println("\n--- My Enquiries ---");
         List<Enquiry> enquiries = applicantController.viewEnquiries(applicant);
         displayEnquiries(enquiries);
     }
 
+    /**
+     * Handles the process of an applicant submitting a new enquiry about a project.
+     * @param applicant The applicant submitting the enquiry.
+     */
     private void handleSubmitEnquiry(Applicant applicant) {
         System.out.println("\n--- Submit Enquiry ---");
         List<Project> projects = applicantController.viewAvailableProjects(applicant);
@@ -520,6 +581,10 @@ public class CLIView {
         }
     }
 
+    /**
+     * Handles the process of an applicant editing their previously submitted enquiry.
+     * @param applicant The applicant editing the enquiry.
+     */
     private void handleEditEnquiry(Applicant applicant) {
         System.out.println("\n--- Edit Enquiry ---");
         List<Enquiry> enquiries = applicantController.viewEnquiries(applicant);
@@ -563,6 +628,10 @@ public class CLIView {
         }
     }
 
+    /**
+     * Handles the process of an applicant deleting their previously submitted enquiry.
+     * @param applicant The applicant deleting the enquiry.
+     */
     private void handleDeleteEnquiry(Applicant applicant) {
         System.out.println("\n--- Delete Enquiry ---");
         List<Enquiry> enquiries = applicantController.viewEnquiries(applicant);
@@ -606,6 +675,10 @@ public class CLIView {
 
     // --- Officer Handlers ---
 
+    /**
+     * Handles viewing all projects (potentially with different details for officers/managers).
+     * @param user The HDB Officer or Manager viewing the projects.
+     */
     private void handleViewAllProjects(User user) {
         System.out.println("\n--- All Projects ---");
         List<Project> projects;
@@ -622,6 +695,10 @@ public class CLIView {
         displayProjects(projects);
     }
 
+    /**
+     * Handles filtering projects based on officer's/manager's input criteria.
+     * @param user The HDB Officer or Manager filtering the projects.
+     */
     private void handleFilterProjects(User user) {
         System.out.println("\n--- Filter Projects ---");
         Map<String, String> filters = getProjectFilters();
@@ -639,12 +716,21 @@ public class CLIView {
         displayProjects(projects);
     }
 
+
+    /**
+     * Handles viewing projects assigned to a specific HDB officer.
+     * @param officer The HDB officer viewing their assigned projects.
+     */
     private void handleViewAssignedProjects(HdbOfficer officer) {
         System.out.println("\n--- Assigned Projects ---");
         List<Project> projects = officerController.viewAssignedProjects(officer);
         displayProjects(projects);
     }
 
+    /**
+     * Handles the process of an HDB officer registering themselves for a project.
+     * @param officer The HDB officer registering for the project.
+     */
     private void handleRegisterForProject(HdbOfficer officer) {
         System.out.println("\n--- Register for Project ---");
         List<Project> projects = officerController.filterProjects(Map.of(), officer);
@@ -663,7 +749,7 @@ public class CLIView {
                 break;
             }
         }
-        
+
         if (selectedProject == null) {
             System.out.println("Invalid project ID. Please try again.");
             return;
@@ -681,12 +767,21 @@ public class CLIView {
         }
     }
 
+    /**
+     /**
+     * Handles viewing enquiries related to projects assigned to the HDB officer.
+     * @param officer The HDB officer viewing the enquiries.
+     */
     private void handleViewEnquiriesForOfficer(HdbOfficer officer) {
         System.out.println("\n--- Enquiries for Assigned Projects ---");
         List<Enquiry> enquiries = officerController.viewEnquiries(officer);
         displayEnquiries(enquiries);
     }
 
+    /**
+     * Handles the process of an HDB officer replying to an enquiry.
+     * @param officer The HDB officer replying to the enquiry.
+     */
     private void handleReplyToEnquiry(HdbOfficer officer) {
         System.out.println("\n--- Reply to Enquiry ---");
         List<Enquiry> enquiries = officerController.viewEnquiries(officer);
@@ -730,9 +825,12 @@ public class CLIView {
         }
     }
 
+    /**
+     * Handles the process of an HDB officer approving or rejecting an application.
+     * @param officer The HDB officer processing the application.
+     */
     private void handleProcessApplication(HdbOfficer officer) {
         System.out.println("\n--- Process Application ---");
-        // This is a simplified version. In a real application, you would query for pending applications
         String applicationId = getStringInput("Enter the ID of the application to process: ");
         
         if (applicationId.trim().isEmpty()) {
@@ -758,6 +856,10 @@ public class CLIView {
         }
     }
 
+    /**
+     * Handles the process of an HDB officer approving or rejecting an application withdrawal request.
+     * @param officer The HDB officer processing the withdrawal request.
+     */
     private void handleProcessWithdrawalRequest(HdbOfficer officer) {
         System.out.println("\n--- Process Withdrawal Request ---");
         // This is a simplified version. In a real application, you would query for pending withdrawal requests
@@ -788,12 +890,20 @@ public class CLIView {
 
     // --- Manager Handlers ---
 
+    /**
+     * Handles viewing projects managed by a specific HDB manager.
+     * @param manager The HDB manager viewing their projects.
+     */
     private void handleViewManagedProjects(HdbManager manager) {
         System.out.println("\n--- Managed Projects ---");
         List<Project> projects = managerController.viewManagedProjects(manager);
         displayProjects(projects);
     }
 
+    /**
+     * Handles the process of an HDB manager creating a new project.
+     * @param manager The HDB manager creating the project.
+     */
     private void handleCreateProject(HdbManager manager) {
         System.out.println("\n--- Create Project ---");
         Map<String, Object> projectDetails = new HashMap<>();
@@ -830,6 +940,12 @@ public class CLIView {
         }
     }
 
+    /**
+     * Checks if a new project's start date clashes with an existing active project's end date.
+     * @param activeEndDate The end date of the currently active project.
+     * @param newStartDate The start date of the new project.
+     * @return true if there is a clash, false otherwise.
+     */
     private boolean checkProjectClash(Date activeEndDate, Date newStartDate) {
         if (newStartDate.compareTo(activeEndDate) < 0) {
             System.out.println("Project application period clash detected");
@@ -838,6 +954,11 @@ public class CLIView {
         return false;
     }
 
+    /**
+     * Retrieves the currently active project managed by the manager, if any.
+     * @param manager The HDB manager.
+     * @return The active Project object, or null if no project is currently active.
+     */
     private Project getActiveProject(HdbManager manager) {
         List<Project> projects = managerController.viewManagedProjects(manager);
         LocalDate today = LocalDate.now();
@@ -853,6 +974,10 @@ public class CLIView {
         return null;
     }
 
+    /**
+     * Handles the process of an HDB manager updating an existing project's details.
+     * @param manager The HDB manager updating the project.
+     */
     private void handleUpdateProject(HdbManager manager) {
         System.out.println("\n--- Update Project ---");
         List<Project> projects = managerController.viewManagedProjects(manager);
@@ -980,6 +1105,10 @@ public class CLIView {
         }
     }
 
+    /**
+     * Handles the process of an HDB manager deleting an existing project.
+     * @param manager The HDB manager deleting the project.
+     */
     private void handleDeleteProject(HdbManager manager) {
         System.out.println("\n--- Delete Project ---");
         List<Project> projects = managerController.viewManagedProjects(manager);
@@ -1013,6 +1142,10 @@ public class CLIView {
         }
     }
 
+    /**
+     * Handles the process of an HDB manager assigning an HDB officer to a project.
+     * @param manager The HDB manager assigning the officer.
+     */
     private void handleAssignOfficer(HdbManager manager) {
         System.out.println("\n--- Assign Officer to Project ---");
         String officerId = getStringInput("Enter Officer ID: ");
@@ -1035,6 +1168,10 @@ public class CLIView {
         }
     }
 
+    /**
+     * Handles the process of an HDB manager approving or rejecting an application.
+     * @param manager The HDB manager processing the application.
+     */
     private void handleProcessApplicationManager(HdbManager manager) {
         System.out.println("\n--- Process Application (Manager) ---");
         String applicationId = getStringInput("Enter the ID of the application to process: ");
@@ -1062,6 +1199,10 @@ public class CLIView {
         }
     }
 
+    /**
+     * Handles the process of an HDB manager approving or rejecting an application withdrawal request.
+     * @param manager The HDB manager processing the withdrawal request.
+     */
     private void handleProcessWithdrawalManager(HdbManager manager) {
         System.out.println("\n--- Process Withdrawal Request (Manager) ---");
         String applicationId = getStringInput("Enter the ID of the application with withdrawal request: ");
@@ -1102,6 +1243,10 @@ public class CLIView {
         }
     }
 
+    /**
+     * Handles the generation of reports based on filter criteria provided by the manager.
+     * @param manager The HDB manager generating the report.
+     */
     private void handleGenerateReport(HdbManager manager) {
         System.out.println("\n--- Generate Report ---");
         Map<String, String> filters = new HashMap<>();
@@ -1127,6 +1272,10 @@ public class CLIView {
 
     // --- Helper Methods ---
 
+    /**
+     * Prompts the user for project filter criteria (neighbourhood, flat type, project name).
+     * @return A map containing the filter keys and values.
+     */
     private Map<String, String> getProjectFilters() {
         Map<String, String> filters = new HashMap<>();
         String input;
@@ -1149,6 +1298,10 @@ public class CLIView {
         return filters;
     }
 
+    /**
+     * Displays a list of projects in a formatted table, tailored for applicant view (less detail).
+     * @param projects The list of projects to display.
+     */
     private void displayProjectsApplicant(List<Project> projects) {
         if (projects.isEmpty()) {
             System.out.println("No projects found.");
@@ -1180,6 +1333,10 @@ public class CLIView {
         System.out.println("---------------------------------------------------------------------------------------------------------------------------------");
     }
 
+    /**
+     * Displays a list of projects in a formatted table (more detailed view for staff).
+     * @param projects The list of projects to display.
+     */
     private void displayProjects(List<Project> projects) {
         if (projects.isEmpty()) {
             System.out.println("No projects found.");
@@ -1213,6 +1370,10 @@ public class CLIView {
         System.out.println("---------------------------------------------------------------------------------------------------------------------------------");
     }
 
+    /**
+     * Displays the details of a single application.
+     * @param application The Application object to display.
+     */
     private void displayApplication(Application application) {
         if (application == null) {
             System.out.println("No application found.");
@@ -1227,6 +1388,10 @@ public class CLIView {
         System.out.println("Status: " + application.getStatus());
     }
 
+    /**
+     * Displays a list of enquiries in a formatted table.
+     * @param enquiries The list of Enquiry objects to display.
+     */
     private void displayEnquiries(List<Enquiry> enquiries) {
         if (enquiries.isEmpty()) {
             System.out.println("No enquiries found.");
@@ -1249,7 +1414,12 @@ public class CLIView {
         
         System.out.println("----------------------------------------------------------------------------------------------------------");
     }
-
+    /**
+     * Truncates a string to a maximum length, adding ellipsis if truncated.
+     * @param text The string to truncate.
+     * @param maxLength The maximum allowed length.
+     * @return The truncated string (or the original string if shorter than maxLength).
+     */
     private String truncateString(String text, int maxLength) {
         if (text == null) {
             return "";
@@ -1262,10 +1432,20 @@ public class CLIView {
         return text.substring(0, maxLength - 3) + "...";
     }
 
+    /**
+     * Displays a generic message to the console.
+     * @param message The message to display.
+     */
     private void displayMessage(String message) {
         System.out.println(message);
     }
 
+    /**
+     * Gets integer input from the user with error handling.
+     * Includes handling for environments without standard input.
+     * @param prompt The message to display before getting input.
+     * @return The integer entered by the user, or a default value (1) if input fails.
+     */
     private int getIntInput(String prompt) {
         while (true) {
             try {
@@ -1298,6 +1478,11 @@ public class CLIView {
         }
     }
 
+    /**
+     * Gets double input from the user with error handling.
+     * @param prompt The message to display before getting input.
+     * @return The double entered by the user, or null if input fails.
+     */
     private Double getDoubleInput(String prompt) {
         while (true) {
             try {
@@ -1322,6 +1507,12 @@ public class CLIView {
         }
     }
 
+    /**
+     * Gets string input from the user with error handling.
+     * Includes handling for environments without standard input.
+     * @param prompt The message to display before getting input.
+     * @return The string entered by the user, or an empty string if input fails.
+     */
     private String getStringInput(String prompt) {
         System.out.print(prompt);
         try {
@@ -1339,6 +1530,12 @@ public class CLIView {
         }
     }
 
+    /**
+     * Gets password input from the user (currently reads as plain text).
+     * Includes handling for environments without standard input.
+     * @param prompt The message to display before getting input.
+     * @return The password string entered by the user, or a default value if input fails.
+     */
     private String getPasswordInput(String prompt) {
         System.out.print(prompt);
         try {
@@ -1356,6 +1553,12 @@ public class CLIView {
         }
     }
 
+    /**
+     * Gets a confirmation (Y/N) from the user with error handling.
+     * Includes handling for environments without standard input.
+     * @param prompt The confirmation question to display.
+     * @return true if the user confirms (Y/Yes), false otherwise (N/No). Defaults to true on input error.
+     */
     private boolean getConfirmation(String prompt) {
         while (true) {
             System.out.print(prompt);
@@ -1382,6 +1585,12 @@ public class CLIView {
         }
     }
 
+    /**
+     * Gets date input from the user in yyyy-MM-dd format with validation.
+     * Includes handling for environments without standard input.
+     * @param prompt The message to display before getting input.
+     * @return The Date object entered by the user, or today's date if input fails.
+     */
     private Date getDateInput(String prompt) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         sdf.setLenient(false);
