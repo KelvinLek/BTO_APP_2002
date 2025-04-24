@@ -181,29 +181,50 @@ public class CLIView {
     }
 
 
+    /**
+     * Displays the menu options available to an HDB Officer user and handles their choice.
+     * Includes both Officer-specific and Applicant-specific functionalities.
+     *
+     * @return false if the user chooses to logout, true otherwise (to continue showing the menu).
+     */
     private boolean displayOfficerMenu() {
         System.out.println("\n--- HDB Officer Menu ---");
-        System.out.println("1. View Available Projects");
-        System.out.println("2. Filter/Search Projects");
+        System.out.println("--- Officer Actions ---");
+        System.out.println("1. View All Projects (Officer View)"); // Officer view might differ slightly
+        System.out.println("2. Filter/Search Projects (Officer View)");
         System.out.println("3. View Assigned Projects");
         System.out.println("4. Register for Project");
         System.out.println("5. View Enquiries for Assigned Projects");
         System.out.println("6. Reply to Enquiry");
         System.out.println("7. Process Application (Approve/Reject)");
         System.out.println("8. Process Withdrawal Request");
-        System.out.println("9. Change Password");
-        System.out.println("10. Logout");
+        System.out.println("--- Applicant Actions ---");
+        System.out.println("9. View Available Projects (as Applicant)");
+        System.out.println("10. Filter/Search Projects (as Applicant)");
+        System.out.println("11. Apply for Project (as Applicant)");
+        System.out.println("12. View My Application Status");
+        System.out.println("13. Request My Application Withdrawal");
+        System.out.println("14. View My Enquiries");
+        System.out.println("15. Submit New Enquiry");
+        System.out.println("16. Edit My Enquiry");
+        System.out.println("17. Delete My Enquiry");
+        System.out.println("--- General Actions ---");
+        System.out.println("18. Change Password");
+        System.out.println("19. Logout");
         System.out.println("------------------------");
 
         int choice = getIntInput("Enter your choice: ");
-        HdbOfficer officer = (HdbOfficer) currentUser; // Safe cast
+        // Cast currentUser to HdbOfficer. Since HdbOfficer extends Applicant,
+        // it can be used where an Applicant is expected.
+        HdbOfficer officer = (HdbOfficer) currentUser;
 
         switch (choice) {
+            // --- Officer Actions ---
             case 1:
-                handleViewAllProjects(officer);
+                handleViewAllProjects(officer); // Uses officer's view logic
                 break;
             case 2:
-                handleFilterProjects(officer);
+                handleFilterProjects(officer); // Uses officer's filter logic
                 break;
             case 3:
                 handleViewAssignedProjects(officer);
@@ -223,10 +244,41 @@ public class CLIView {
             case 8:
                 handleProcessWithdrawalRequest(officer);
                 break;
+            // --- Applicant Actions (using the HdbOfficer object as an Applicant) ---
             case 9:
-                if (handleChangePassword()) { return false; } // logout after successful password change
+                // Explicitly call the applicant version of view available projects
+                handleViewAvailableProjects(officer);
                 break;
             case 10:
+                // Explicitly call the applicant version of filter projects
+                handleFilterApplicantProjects(officer);
+                break;
+            case 11:
+                handleApplyForProject(officer);
+                break;
+            case 12:
+                handleViewApplicationStatus(officer);
+                break;
+            case 13:
+                handleRequestWithdrawal(officer);
+                break;
+            case 14:
+                handleViewMyEnquiries(officer);
+                break;
+            case 15:
+                handleSubmitEnquiry(officer);
+                break;
+            case 16:
+                handleEditEnquiry(officer);
+                break;
+            case 17:
+                handleDeleteEnquiry(officer);
+                break;
+            // --- General Actions ---
+            case 18:
+                handleChangePassword();
+                break;
+            case 19:
                 return false; // Signal logout
             default:
                 displayMessage("Invalid choice. Please try again.");
