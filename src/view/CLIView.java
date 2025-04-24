@@ -6,6 +6,7 @@ import pub_enums.*;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.NoSuchElementException;
 import java.util.regex.Pattern;
@@ -743,7 +744,9 @@ public class CLIView {
         projectDetails.put("startDate", getDateInput("Application Start Date (yyyy-MM-dd): "));
         projectDetails.put("endDate", getDateInput("Application End Date (yyyy-MM-dd): "));
         projectDetails.put("units2Room", getIntInput("Number of 2-Room Flats: "));
+        projectDetails.put("price2Room", getDoubleInput("Price of 2-Room Flats: "));
         projectDetails.put("units3Room", getIntInput("Number of 3-Room Flats: "));
+        projectDetails.put("price3Room", getDoubleInput("Price of 3-Room Flats: "));
         projectDetails.put("officerSlots", getIntInput("Number of Officer Slots: "));
         projectDetails.put("isVisible", getConfirmation("Make project visible? (Y/N): "));
         
@@ -791,12 +794,78 @@ public class CLIView {
         if (!input.trim().isEmpty()) {
             updates.put("neighbourhood", input);
         }
-        
+
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        formatter.setLenient(false);
+        try {
+            input = getStringInput("Change application opening date [" + selectedProject.getAppOpen() + "]: ");
+            Date newStartDate = (Date) formatter.parse(input);
+            if (newStartDate.compareTo(selectedProject.getAppClose()) < 0) {
+                updates.put("startDate", newStartDate);
+            } else {
+                System.out.println("Application opening date must be before application closing date!");
+            }
+        } catch (ParseException e) {
+            System.out.println("Invalid date format. Please use yyyy-MM-dd.");
+        }
+
+        try {
+            input = getStringInput("Change application closing date [" + selectedProject.getAppClose() + "]: ");
+            Date newEndDate = (Date) formatter.parse(input);
+            if (newEndDate.compareTo(selectedProject.getAppClose()) < 0) {
+                updates.put("endDate", newEndDate);
+            } else {
+                System.out.println("Application closing date must be after application opening date!");
+            }
+        } catch (ParseException e) {
+            System.out.println("Invalid date format. Please use yyyy-MM-dd.");
+        }
+
+        int new2RmUnits = getIntInput("Change number of 2-Room Flats: ");
+        if (new2RmUnits >= 0) {
+            updates.put("units2Room", new2RmUnits);
+        }
+        else {
+            System.out.println("Number of flats must be zero or more.");
+        }
+
+        Double new2RmPrice = getDoubleInput("Change price of 2-Room Flats: ");
+        if (new2RmPrice > 100000.0) {
+            updates.put("price2Room", new2RmPrice);
+        }
+        else{
+            System.out.println("Flat price must be more than $100,000.");
+        }
+
+        Double new3RmPrice = getDoubleInput("Change price of 3-Room Flats: ");
+        if (new3RmPrice > 150000.0) {
+            updates.put("price3Room", new3RmPrice);
+        }
+        else{
+            System.out.println("Flat price must be more than $150,000.");
+        }
+
+        int new3RmUnits = getIntInput("Change number of 4-Room Flats: ");
+        if (new3RmUnits >= 0) {
+            updates.put("units3Room", new3RmUnits);
+        }
+        else {
+            System.out.println("Number of flats must be zero or more.");
+        }
+
+        int newOfficerSlots = getIntInput("Change number of officer slots [" + selectedProject.getOfficerSlots() + "]: ");
+        if (newOfficerSlots > 0) {
+            updates.put("officerSlots", newOfficerSlots);
+        }
+        else {
+            System.out.println("Number of officer slots must be more than zero.");
+        }
+
         String newVisible = getStringInput("Make visible (true/false) [" + selectedProject.isVisible() + "]: ");
         if (!newVisible.trim().isEmpty()) {
             updates.put("isVisible", Boolean.parseBoolean(newVisible));
         }
-        
+
         if (!updates.isEmpty() && getConfirmation("Confirm updates to project " + selectedProject.getProjName() + "? (Y/N): ")) {
             boolean result = managerController.updateProject(manager, selectedProject, updates);
             if (result) {
@@ -1027,6 +1096,7 @@ public class CLIView {
                 System.out.print(prompt);
                 
                 // In case we're running this in an environment where standard input isn't available
+                // TO REMOVE?
                 if (!scanner.hasNextLine()) {
                     System.out.println("No input available. Defaulting to option 1.");
                     return 1; // Default to option 1 (Login)
@@ -1048,6 +1118,30 @@ public class CLIView {
             } catch (Exception e) {
                 System.out.println("Error reading input: " + e.getMessage());
                 return 1; // Default to option 1 (Login)
+            }
+        }
+    }
+
+    private Double getDoubleInput(String prompt) {
+        while (true) {
+            try {
+                System.out.print(prompt);
+                if (!scanner.hasNextLine()) {
+                    return null;
+                }
+
+                // Read the input
+                String input = scanner.nextLine();
+                if (input == null || input.trim().isEmpty()) {
+                    System.out.println("Empty input. Please enter a number.");
+                    continue;
+                }
+
+                return Double.parseDouble(input);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input. Please enter a number.");
+            } catch (Exception e) {
+                System.out.println("Error reading input: " + e.getMessage());
             }
         }
     }
@@ -1074,7 +1168,7 @@ public class CLIView {
         try {
             if (!scanner.hasNextLine()) {
                 System.out.println("No input available. Defaulting to 'password'.");
-                return "password"; // Default password for testing
+                return "password"; // Default password for testing TO REMOVE
             }
             return scanner.nextLine();
         } catch (NoSuchElementException e) {

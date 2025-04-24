@@ -55,7 +55,7 @@ public class ProjectRepo {
             pw.println(String.join("|",
                     "ProjectId", "ProjectName", "Visible", "Neighbourhood", 
                     "OpenDate", "CloseDate", "ManagerId", "OfficerSlots", 
-                    "OfficerIds", "Flats"));
+                    "OfficerIds", "Flat Details (Type, Total, Remaining, Price)"));
 
             // Write data
             for (Project project : projectsMap.values()) {
@@ -158,12 +158,13 @@ public class ProjectRepo {
         String[] flatEntries = flatsStr.split(FLATS_SEPARATOR);
         
         for (String flatEntry : flatEntries) {
-            String[] flatData = flatEntry.split(":");
+            String[] flatData = flatEntry.split(",");
             if (flatData.length >= 2) {
-                // String flatId = flatData[0];
-                FlatType flatType = FlatType.valueOf(flatData[1]);
-                // Create Flat with default values for total, remaining, and price
-                flats.add(new Flat(flatType, 10, 10, 300000.0)); // Default values
+                FlatType flatType = FlatType.valueOf(flatData[0]);
+                int total = Integer.parseInt(flatData[1]);
+                int remaining = Integer.parseInt(flatData[2]);
+                double price = Double.parseDouble(flatData[3]);
+                flats.add(new Flat(flatType, total, remaining, price));
             }
         }
         
@@ -174,7 +175,7 @@ public class ProjectRepo {
         if (flats == null || flats.isEmpty()) return "";
         
         return flats.stream()
-                .map(f -> UUID.randomUUID().toString() + ":" + f.getFlatType().name())
+                .map(f ->  f.getFlatType().name() + "," + f.getTotal() + ","  + f.getRemaining() + ","  + f.getPrice())
                 .collect(Collectors.joining(FLATS_SEPARATOR));
     }
 

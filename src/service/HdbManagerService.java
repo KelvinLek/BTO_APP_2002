@@ -5,6 +5,7 @@ import pub_enums.*;
 import repository.*;
 
 import java.util.*;
+import java.util.logging.LoggingPermission;
 
 /**
  * Provides services specific to HDB Managers, handling project management,
@@ -155,7 +156,9 @@ public class HdbManagerService extends UserService implements IProjectView, IRep
         Date startDate = (Date) projectDetails.get("startDate");
         Date endDate = (Date) projectDetails.get("endDate");
         Integer units2Room = (Integer) projectDetails.get("units2Room");
+        Double price2Room = (Double) projectDetails.get("price2Room");
         Integer units3Room = (Integer) projectDetails.get("units3Room");
+        Double price3Room = (Double) projectDetails.get("price3Room");
         Integer slots = (Integer) projectDetails.get("officerSlots");
         Boolean isVisible = (Boolean) projectDetails.get("isVisible");
 
@@ -173,10 +176,10 @@ public class HdbManagerService extends UserService implements IProjectView, IRep
         // Initialize flat lists
         List<Flat> flats = new ArrayList<>();
         if (units2Room != null && units2Room > 0) {
-            flats.add(new Flat(FlatType.TWOROOM, units2Room, units2Room, 300000.0));
+            flats.add(new Flat(FlatType.TWOROOM, units2Room, units2Room, price2Room));
         }
         if (units3Room != null && units3Room > 0) {
-            flats.add(new Flat(FlatType.THREEROOM, units3Room, units3Room, 400000.0));
+            flats.add(new Flat(FlatType.THREEROOM, units3Room, units3Room, price3Room));
         }
 
         // Generate project ID

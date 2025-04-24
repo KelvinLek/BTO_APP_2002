@@ -1,2 +1,3 @@
-ProjectId|ProjectName|Visible|Neighbourhood|OpenDate|CloseDate|ManagerId|OfficerSlots|OfficerIds|Flats
-P001|Acacia Breeze|true|Yishun|15 02 2025|20 07 2025|NULL|3|S6543210I|298a398e-eb4c-461e-b96c-52f8370c8698:TWOROOM;9154f3ba-6d0a-4092-b2bc-f90796a93be2:THREEROOM
+ProjectId|ProjectName|Visible|Neighbourhood|OpenDate|CloseDate|ManagerId|OfficerSlots|OfficerIds|Flat Details (Type, Total, Remaining, Price)
+P001|Acacia Breeze|true|Yishun|15 02 2025|20 07 2025|T8765432F|3|S6543210I|TWOROOM,2,2,350000.0;THREEROOM,3,3,450000.0
+P4749|Sunrise Monsoon|true|Canberra|10 04 2025|03 10 2025|S5678901G|3|NULL|TWOROOM,2,2,300000.0;THREEROOM,3,3,400000.0
