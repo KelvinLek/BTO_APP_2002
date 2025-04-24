@@ -8,11 +8,17 @@ import service.UserService;
 import java.util.*;
 
 /**
- * Controller for Applicant-specific operations
+ * Handles command-line interactions for users logged in as Applicants.
+ * It controls actions like viewing projects, checking eligibility,
+ * submitting applications, managing enquiries, and changing passwords
+ * by delegating tasks to the ApplicantService.
  */
 public class ApplicantController extends UserController {
     private ApplicantService applicantService;
 
+    /**
+     * Constructs an ApplicantController instance.
+     */
     public ApplicantController(ApplicantService applicantService, UserService userService) {
         super(userService);
         this.applicantService = applicantService;
