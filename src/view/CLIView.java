@@ -184,13 +184,15 @@ public class CLIView {
     /**
      * Displays the menu options available to an HDB Officer user and handles their choice.
      * Includes both Officer-specific and Applicant-specific functionalities.
+     * Uses injected concrete controller instances.
      *
-     * @return false if the user chooses to logout, true otherwise (to continue showing the menu).
+     * @return false if the user chooses to logout, true otherwise.
      */
     private boolean displayOfficerMenu() {
         System.out.println("\n--- HDB Officer Menu ---");
+        // Menu items remain the same
         System.out.println("--- Officer Actions ---");
-        System.out.println("1. View All Projects (Officer View)"); // Officer view might differ slightly
+        System.out.println("1. View All Projects (Officer View)");
         System.out.println("2. Filter/Search Projects (Officer View)");
         System.out.println("3. View Assigned Projects");
         System.out.println("4. Register for Project");
@@ -201,7 +203,7 @@ public class CLIView {
         System.out.println("--- Applicant Actions ---");
         System.out.println("9. View Available Projects (as Applicant)");
         System.out.println("10. Filter/Search Projects (as Applicant)");
-        System.out.println("11. Apply for Project (as Applicant)");
+        System.out.println("11. Apply for Project (as Applicant)"); // *** This option needs careful handling ***
         System.out.println("12. View My Application Status");
         System.out.println("13. Request My Application Withdrawal");
         System.out.println("14. View My Enquiries");
@@ -214,77 +216,39 @@ public class CLIView {
         System.out.println("------------------------");
 
         int choice = getIntInput("Enter your choice: ");
-        // Cast currentUser to HdbOfficer. Since HdbOfficer extends Applicant,
-        // it can be used where an Applicant is expected.
         HdbOfficer officer = (HdbOfficer) currentUser;
 
         switch (choice) {
-            // --- Officer Actions ---
-            case 1:
-                handleViewAllProjects(officer); // Uses officer's view logic
-                break;
-            case 2:
-                handleFilterProjects(officer); // Uses officer's filter logic
-                break;
-            case 3:
-                handleViewAssignedProjects(officer);
-                break;
-            case 4:
-                handleRegisterForProject(officer);
-                break;
-            case 5:
-                handleViewEnquiriesForOfficer(officer);
-                break;
-            case 6:
-                handleReplyToEnquiry(officer);
-                break;
-            case 7:
-                handleProcessApplication(officer);
-                break;
-            case 8:
-                handleProcessWithdrawalRequest(officer);
-                break;
-            // --- Applicant Actions (using the HdbOfficer object as an Applicant) ---
-            case 9:
-                // Explicitly call the applicant version of view available projects
-                handleViewAvailableProjects(officer);
-                break;
-            case 10:
-                // Explicitly call the applicant version of filter projects
-                handleFilterApplicantProjects(officer);
-                break;
-            case 11:
-                handleApplyForProject(officer);
-                break;
-            case 12:
-                handleViewApplicationStatus(officer);
-                break;
-            case 13:
-                handleRequestWithdrawal(officer);
-                break;
-            case 14:
-                handleViewMyEnquiries(officer);
-                break;
-            case 15:
-                handleSubmitEnquiry(officer);
-                break;
-            case 16:
-                handleEditEnquiry(officer);
-                break;
-            case 17:
-                handleDeleteEnquiry(officer);
-                break;
+            // --- Officer Actions (use officerController instance) ---
+            case 1: handleViewAllProjects(officer); break;
+            case 2: handleFilterProjects(officer); break;
+            case 3: handleViewAssignedProjects(officer); break;
+            case 4: handleRegisterForProject(officer); break;
+            case 5: handleViewEnquiriesForOfficer(officer); break;
+            case 6: handleReplyToEnquiry(officer); break;
+            case 7: handleProcessApplication(officer); break;
+            case 8: handleProcessWithdrawalRequest(officer); break;
+
+            // --- Applicant Actions ---
+            // These actions are performed by the officer *as* an applicant.
+            // Use the applicantController for standard applicant views/enquiries.
+            // Use the  officerController method for applying (to get officer eligibility check).
+            case 9: handleViewAvailableProjects(officer); break; // Uses applicantController via handler
+            case 10: handleFilterApplicantProjects(officer); break; // Uses applicantController via handler
+            case 11: handleOfficerApplyForProject(officer); break; // Calls officerController.officerApplyForProject
+            case 12: handleViewApplicationStatus(officer); break; // Uses applicantController via handler
+            case 13: handleRequestWithdrawal(officer); break; // Uses applicantController via handler
+            case 14: handleViewMyEnquiries(officer); break; // Uses applicantController via handler
+            case 15: handleSubmitEnquiry(officer); break; // Uses applicantController via handler
+            case 16: handleEditEnquiry(officer); break; // Uses applicantController via handler
+            case 17: handleDeleteEnquiry(officer); break; // Uses applicantController via handler
+
             // --- General Actions ---
-            case 18:
-                handleChangePassword();
-                break;
-            case 19:
-                return false; // Signal logout
-            default:
-                displayMessage("Invalid choice. Please try again.");
-                break;
+            case 18: handleChangePassword(); break;
+            case 19: return false; // Logout
+            default: displayMessage("Invalid choice."); break;
         }
-        return true; // Continue showing menu
+        return true; // Continue
     }
 
     private boolean displayManagerMenu() {
@@ -645,17 +609,18 @@ public class CLIView {
         displayProjects(projects);
     }
 
+
     private void handleRegisterForProject(HdbOfficer officer) {
         System.out.println("\n--- Register for Project ---");
         List<Project> projects = officerController.filterProjects(Map.of(), officer);
         if (projects.isEmpty()) {
             return;
         }
-        
+
         displayProjects(projects);
         System.out.println("Enter the ID of the project you want to register for:");
         String projectId = getStringInput("Project ID: ");
-        
+
         Project selectedProject = null;
         for (Project project : projects) {
             if (project.getProjectId().equals(projectId)) {
@@ -663,12 +628,12 @@ public class CLIView {
                 break;
             }
         }
-        
+
         if (selectedProject == null) {
             System.out.println("Invalid project ID. Please try again.");
             return;
         }
-        
+
         if (getConfirmation("Confirm registration for project " + selectedProject.getProjName() + "? (Y/N): ")) {
             boolean result = officerController.registerForProject(officer, selectedProject);
             if (result) {
@@ -693,11 +658,11 @@ public class CLIView {
         if (enquiries.isEmpty()) {
             return;
         }
-        
+
         displayEnquiries(enquiries);
         System.out.println("Enter the ID of the enquiry you want to reply to:");
         String enquiryId = getStringInput("Enquiry ID: ");
-        
+
         Enquiry selectedEnquiry = null;
         for (Enquiry enquiry : enquiries) {
             if (enquiry.getEnquiryId().equals(enquiryId)) {
@@ -705,23 +670,23 @@ public class CLIView {
                 break;
             }
         }
-        
+
         if (selectedEnquiry == null) {
             System.out.println("Invalid enquiry ID. Please try again.");
             return;
         }
-        
+
         if (selectedEnquiry.getReply() != null && !selectedEnquiry.getReply().isEmpty()) {
             System.out.println("This enquiry has already been replied to.");
             return;
         }
-        
+
         String replyMessage = getStringInput("Enter your reply: ");
         if (replyMessage.trim().isEmpty()) {
             System.out.println("Reply cannot be empty. Reply cancelled.");
             return;
         }
-        
+
         boolean result = officerController.replyToEnquiry(enquiryId, officer, replyMessage);
         if (result) {
             System.out.println("Reply submitted successfully.");
@@ -734,18 +699,18 @@ public class CLIView {
         System.out.println("\n--- Process Application ---");
         // This is a simplified version. In a real application, you would query for pending applications
         String applicationId = getStringInput("Enter the ID of the application to process: ");
-        
+
         if (applicationId.trim().isEmpty()) {
             System.out.println("Application ID cannot be empty. Processing cancelled.");
             return;
         }
-        
+
         System.out.println("1. Approve");
         System.out.println("2. Reject");
         int choice = getIntInput("Enter your choice (1-2): ");
-        
+
         boolean approve = choice == 1;
-        
+
         if (getConfirmation("Confirm " + (approve ? "approval" : "rejection") + " of application " + applicationId + "? (Y/N): ")) {
             boolean result = officerController.processApplication(applicationId, officer, approve);
             if (result) {
@@ -762,18 +727,18 @@ public class CLIView {
         System.out.println("\n--- Process Withdrawal Request ---");
         // This is a simplified version. In a real application, you would query for pending withdrawal requests
         String applicationId = getStringInput("Enter the ID of the application with withdrawal request: ");
-        
+
         if (applicationId.trim().isEmpty()) {
             System.out.println("Application ID cannot be empty. Processing cancelled.");
             return;
         }
-        
+
         System.out.println("1. Approve withdrawal");
         System.out.println("2. Reject withdrawal");
         int choice = getIntInput("Enter your choice (1-2): ");
-        
+
         boolean approve = choice == 1;
-        
+
         if (getConfirmation("Confirm " + (approve ? "approval" : "rejection") + " of withdrawal request for application " + applicationId + "? (Y/N): ")) {
             boolean result = officerController.processWithdrawalRequest(applicationId, officer, approve);
             if (result) {
@@ -797,7 +762,7 @@ public class CLIView {
     private void handleCreateProject(HdbManager manager) {
         System.out.println("\n--- Create Project ---");
         Map<String, Object> projectDetails = new HashMap<>();
-        
+
         projectDetails.put("projectName", getStringInput("Project Name: "));
         projectDetails.put("neighbourhood", getStringInput("Neighbourhood: "));
         Date applStartDate = getDateInput("Application Start Date (yyyy-MM-dd): ");
@@ -859,11 +824,11 @@ public class CLIView {
         if (projects.isEmpty()) {
             return;
         }
-        
+
         displayProjects(projects);
         System.out.println("Enter the ID of the project you want to update:");
         String projectId = getStringInput("Project ID: ");
-        
+
         Project selectedProject = null;
         for (Project project : projects) {
             if (project.getProjectId().equals(projectId)) {
@@ -871,20 +836,20 @@ public class CLIView {
                 break;
             }
         }
-        
+
         if (selectedProject == null) {
             System.out.println("Invalid project ID. Please try again.");
             return;
         }
-        
+
         Map<String, Object> updates = new HashMap<>();
         System.out.println("Leave field empty to keep current value.");
-        
+
         String input = getStringInput("New Project Name [" + selectedProject.getProjName() + "]: ");
         if (!input.trim().isEmpty()) {
             updates.put("projectName", input);
         }
-        
+
         input = getStringInput("New Neighbourhood [" + selectedProject.getNeighbourhood() + "]: ");
         if (!input.trim().isEmpty()) {
             updates.put("neighbourhood", input);
@@ -1017,12 +982,12 @@ public class CLIView {
         System.out.println("\n--- Assign Officer to Project ---");
         String officerId = getStringInput("Enter Officer ID: ");
         String projectId = getStringInput("Enter Project ID: ");
-        
+
         if (officerId.trim().isEmpty() || projectId.trim().isEmpty()) {
             System.out.println("Officer ID and Project ID cannot be empty. Assignment cancelled.");
             return;
         }
-        
+
         if (getConfirmation("Confirm assignment of Officer " + officerId + " to Project " + projectId + "? (Y/N): ")) {
             boolean result = managerController.assignOfficer(manager, officerId, projectId);
             if (result) {
@@ -1038,18 +1003,18 @@ public class CLIView {
     private void handleProcessApplicationManager(HdbManager manager) {
         System.out.println("\n--- Process Application (Manager) ---");
         String applicationId = getStringInput("Enter the ID of the application to process: ");
-        
+
         if (applicationId.trim().isEmpty()) {
             System.out.println("Application ID cannot be empty. Processing cancelled.");
             return;
         }
-        
+
         System.out.println("1. Approve");
         System.out.println("2. Reject");
         int choice = getIntInput("Enter your choice (1-2): ");
-        
+
         boolean approve = choice == 1;
-        
+
         if (getConfirmation("Confirm " + (approve ? "approval" : "rejection") + " of application " + applicationId + "? (Y/N): ")) {
             boolean result = managerController.processApplication(applicationId, manager, approve);
             if (result) {
@@ -1065,16 +1030,16 @@ public class CLIView {
     private void handleProcessWithdrawalManager(HdbManager manager) {
         System.out.println("\n--- Process Withdrawal Request (Manager) ---");
         String applicationId = getStringInput("Enter the ID of the application with withdrawal request: ");
-        
+
         if (applicationId.trim().isEmpty()) {
             System.out.println("Application ID cannot be empty. Processing cancelled.");
             return;
         }
-        
+
         System.out.println("1. Approve withdrawal");
         System.out.println("2. Reject withdrawal");
         int choice = getIntInput("Enter your choice (1-2): ");
-        
+
         if (choice == 1) {
             if (getConfirmation("Confirm approval of withdrawal for application " + applicationId + "? (Y/N): ")) {
                 boolean result = managerController.approveWithdrawal(manager, applicationId);
@@ -1105,21 +1070,21 @@ public class CLIView {
     private void handleGenerateReport(HdbManager manager) {
         System.out.println("\n--- Generate Report ---");
         Map<String, String> filters = new HashMap<>();
-        
+
         System.out.println("Enter filter criteria (leave blank to ignore):");
         String input = getStringInput("Filter by Project ID: ");
         if (!input.trim().isEmpty()) {
             filters.put("projectId", input);
         }
-        
+
         input = getStringInput("Filter by Status (e.g., APPROVED, BOOKED): ");
         if (!input.trim().isEmpty()) {
             filters.put("status", input);
         }
-        
+
         System.out.println("Generating report...");
         List<Object> reportData = managerController.generateBookingReport(filters, manager);
-        
+
         System.out.println("\n--- Report Results ---");
         System.out.println("Total entries: " + reportData.size());
         // In a real application, you would display the report data in a formatted way
@@ -1130,22 +1095,22 @@ public class CLIView {
     private Map<String, String> getProjectFilters() {
         Map<String, String> filters = new HashMap<>();
         String input;
-        
+
         input = getStringInput("Neighbourhood (or leave blank): ");
         if (!input.trim().isEmpty()) {
             filters.put("neighbourhood", input);
         }
-        
+
         input = getStringInput("Flat Type (TWOROOM/THREEROOM or leave blank): ");
         if (!input.trim().isEmpty()) {
             filters.put("flatType", input);
         }
-        
+
         input = getStringInput("Project Name (or leave blank): ");
         if (!input.trim().isEmpty()) {
             filters.put("projectName", input);
         }
-        
+
         return filters;
     }
 
@@ -1154,12 +1119,12 @@ public class CLIView {
             System.out.println("No projects found.");
             return;
         }
-        
+
         System.out.println("\n--- Projects ---");
         System.out.println("-----------------------------------------------------------------------------------------------------------");
         System.out.printf("%-20s | %-30s | %-15s | %-10s | %-10s\n", "ID", "Name", "Neighbourhood", "Visible", "Officer Slots");
         System.out.println("-----------------------------------------------------------------------------------------------------------");
-        
+
         for (Project project : projects) {
             System.out.printf("%-20s | %-30s | %-15s | %-10s | %-10d\n",
                     project.getProjectId(),
@@ -1168,7 +1133,7 @@ public class CLIView {
                     project.isVisible() ? "Yes" : "No",
                     project.getOfficerSlots());
         }
-        
+
         System.out.println("-----------------------------------------------------------------------------------------------------------");
     }
 
@@ -1177,7 +1142,7 @@ public class CLIView {
             System.out.println("No application found.");
             return;
         }
-        
+
         System.out.println("\n--- Application Details ---");
         System.out.println("ID: " + application.getId());
         System.out.println("Applicant ID: " + application.getApplicantId());
@@ -1191,12 +1156,12 @@ public class CLIView {
             System.out.println("No enquiries found.");
             return;
         }
-        
+
         System.out.println("\n--- Enquiries ---");
         System.out.println("----------------------------------------------------------------------------------------------------------");
         System.out.printf("%-20s | %-15s | %-20s | %-30s | %-30s\n", "ID", "Applicant ID", "Project ID", "Message", "Reply");
         System.out.println("----------------------------------------------------------------------------------------------------------");
-        
+
         for (Enquiry enquiry : enquiries) {
             System.out.printf("%-20s | %-15s | %-20s | %-30s | %-30s\n",
                     enquiry.getEnquiryId(),
@@ -1205,7 +1170,7 @@ public class CLIView {
                     truncateString(enquiry.getMessage(), 30),
                     truncateString(enquiry.getReply(), 30));
         }
-        
+
         System.out.println("----------------------------------------------------------------------------------------------------------");
     }
 
@@ -1213,11 +1178,11 @@ public class CLIView {
         if (text == null) {
             return "";
         }
-        
+
         if (text.length() <= maxLength) {
             return text;
         }
-        
+
         return text.substring(0, maxLength - 3) + "...";
     }
 
@@ -1229,21 +1194,21 @@ public class CLIView {
         while (true) {
             try {
                 System.out.print(prompt);
-                
+
                 // In case we're running this in an environment where standard input isn't available
                 // TO REMOVE?
                 if (!scanner.hasNextLine()) {
                     System.out.println("No input available. Defaulting to option 1.");
                     return 1; // Default to option 1 (Login)
                 }
-                
+
                 // Otherwise read the input
                 String input = scanner.nextLine();
                 if (input == null || input.trim().isEmpty()) {
                     System.out.println("Empty input. Please enter a number.");
                     continue;
                 }
-                
+
                 return Integer.parseInt(input);
             } catch (NumberFormatException e) {
                 System.out.println("Invalid input. Please enter a number.");
@@ -1344,7 +1309,7 @@ public class CLIView {
     private Date getDateInput(String prompt) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         sdf.setLenient(false);
-        
+
         while (true) {
             System.out.print(prompt);
             try {
@@ -1365,6 +1330,34 @@ public class CLIView {
                 System.out.println("Error reading input: " + e.getMessage());
                 return new Date(); // Default to today's date
             }
+        }
+    }
+
+    private void handleOfficerApplyForProject(HdbOfficer officer) {
+        System.out.println("\n--- Apply for Project (as Applicant) ---");
+        // Use applicantController to view projects officer *could* apply for
+        List<Project> projects = applicantController.viewAvailableProjects(officer);
+        if (projects.isEmpty()) {
+            return; // Message handled by viewAvailableProjects
+        }
+
+        displayProjects(projects);
+        String projectId = getStringInput("Project ID to apply for: ");
+        Project selectedProject = projects.stream()
+                .filter(p -> p != null && p.getProjectId().equalsIgnoreCase(projectId)) // Added null check
+                .findFirst().orElse(null);
+
+        if (selectedProject == null) {
+            displayMessage("Invalid project ID from the available list.");
+            return;
+        }
+
+        if (getConfirmation("Confirm application for " + selectedProject.getProjName() + "? (Y/N): ")) {
+            // *** Call the OFFICER controller's specific apply method ***
+            boolean result = officerController.officerApplyForProject(officer, selectedProject);
+            // Success/failure messages are handled within the controllers/services called
+        } else {
+            displayMessage("Application cancelled.");
         }
     }
 }

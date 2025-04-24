@@ -51,12 +51,11 @@ public class Main {
 
         // Initialize controllers
         UserController userController = new UserController(userService);
-        
+
         ApplicantController applicantController = new ApplicantController(
                 applicantService, userService);
-        
-        HdbOfficerController officerController = new HdbOfficerController(
-                officerService, userService);
+
+        HdbOfficerController officerController = new HdbOfficerController(officerService, applicantService, userService);
         
         HdbManagerController managerController = new HdbManagerController(
                 managerService, userService);

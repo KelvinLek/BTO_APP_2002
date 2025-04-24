@@ -2,6 +2,7 @@ package controller;
 
 import entity.*;
 import pub_enums.*;
+import service.ApplicantService;
 import service.HdbOfficerService;
 import service.UserService;
 
@@ -12,11 +13,18 @@ import java.util.Map;
  * Controller for HDB Officer-specific operations
  */
 public class HdbOfficerController extends UserController {
-    private HdbOfficerService officerService;
+    private final HdbOfficerService officerService;
+    private final ApplicantService applicantService; // **** Add ApplicantService dependency ****
+    private final UserService userService; // Keep for base class constructor
 
-    public HdbOfficerController(HdbOfficerService officerService, UserService userService) {
+    // **** Update constructor to inject ApplicantService ****
+    public HdbOfficerController(HdbOfficerService officerService,
+                                ApplicantService applicantService, // Inject ApplicantService
+                                UserService userService) {
         super(userService);
         this.officerService = officerService;
+        this.applicantService = applicantService; // Store injected service
+        this.userService = userService;
     }
 
     /**
@@ -257,5 +265,37 @@ public class HdbOfficerController extends UserController {
         System.out.println("Applicant is " + (eligible ? "eligible" : "not eligible") + " for this project.");
         
         return eligible;
+    }
+
+    /**
+     * Handles an HDB Officer applying for a project themselves.
+     * Coordinates the process: uses officerService for eligibility checks
+     * and applicantService for creating the application record.
+     *
+     * @param officer The HdbOfficer applying for the project.
+     * @param project The Project being applied for.
+     * @return true if the application was successful, false otherwise.
+     */
+    public boolean officerApplyForProject(HdbOfficer officer, Project project) {
+        if (officer == null || project == null) {
+            System.out.println("Error: Officer or project information missing.");
+            return false;
+        }
+
+        // 1. Use officerService for the OFFICER-SPECIFIC eligibility check
+        //    This check includes standard applicant rules + officer rules (e.g., not assigned)
+        if (!officerService.checkEligibility(officer, project)) {
+            // Specific reason should be printed by the service's checkEligibility method
+            System.out.println("Application failed: Officer eligibility check failed.");
+            return false;
+        }
+
+        // 2. If eligible according to officer rules, use applicantService
+        //    to perform the actual application creation.
+        System.out.println("Officer eligibility passed. Proceeding with application via ApplicantService...");
+        boolean result = applicantService.applyForProject(officer, project); // Pass officer AS Applicant
+
+        // Success/failure messages are handled within applicantService.applyForProject
+        return result;
     }
 }
