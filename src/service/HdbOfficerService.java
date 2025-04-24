@@ -333,12 +333,9 @@ public class HdbOfficerService extends UserService implements IApplyableService,
     }
 
     /**
-     * Checks if a user (Applicant or HdbOfficer) is eligible to apply for a specific project.
-     * Includes standard applicant checks (eligibility for flat type, no active application)
-     * AND **officer-specific checks** (not assigned to the project).
-     * Implements {@link IEligibilityCheck#checkEligibility(User, Project)}.
+     * Checks if an applicant is eligible to apply for a project.
      *
-     * @param user The User (must be Applicant and its subclasses)
+     * @param user The User (must be Applicant).
      * @param project The Project.
      * @return true if eligible, false otherwise.
      */
@@ -361,16 +358,6 @@ public class HdbOfficerService extends UserService implements IApplyableService,
         }
         if (!eligibleForAnyFlat) {
             return false; // Not eligible for any flat in this project
-        }
-
-        // 3. *** OFFICER-SPECIFIC CHECK ***
-        if (user instanceof HdbOfficer) {
-            HdbOfficer officer = (HdbOfficer) user;
-            // Check if the officer is assigned to this specific project
-            if (isOfficerAssigned(officer, project)) {
-                System.out.println("Eligibility Check Fail: Officer " + user.getId() + " cannot apply as they are assigned to project " + project.getProjectId());
-                return false; // Officer assigned to this project cannot apply
-            }
         }
 
         // Check if applicant already has an active application
