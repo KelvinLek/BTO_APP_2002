@@ -6,6 +6,9 @@ import pub_enums.*;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.NoSuchElementException;
@@ -745,7 +748,18 @@ public class CLIView {
         
         projectDetails.put("projectName", getStringInput("Project Name: "));
         projectDetails.put("neighbourhood", getStringInput("Neighbourhood: "));
-        projectDetails.put("startDate", getDateInput("Application Start Date (yyyy-MM-dd): "));
+        Date applStartDate = getDateInput("Application Start Date (yyyy-MM-dd): ");
+
+        // check if start date overlaps with current active project
+        Project activeProject = getActiveProject(manager);
+        if (activeProject != null) {
+            if (checkProjectClash(activeProject.getAppClose(), applStartDate)) {
+                System.out.println("Cancelling project creation...");
+                return;
+            }
+        }
+
+        projectDetails.put("startDate", applStartDate);
         projectDetails.put("endDate", getDateInput("Application End Date (yyyy-MM-dd): "));
         projectDetails.put("units2Room", getIntInput("Number of 2-Room Flats: "));
         projectDetails.put("price2Room", getDoubleInput("Price of 2-Room Flats: "));
@@ -753,13 +767,38 @@ public class CLIView {
         projectDetails.put("price3Room", getDoubleInput("Price of 3-Room Flats: "));
         projectDetails.put("officerSlots", getIntInput("Number of Officer Slots: "));
         projectDetails.put("isVisible", getConfirmation("Make project visible? (Y/N): "));
-        
+
+
+
         Project project = managerController.createProject(manager, projectDetails);
         if (project != null) {
             System.out.println("Project created successfully with ID: " + project.getProjectId());
         } else {
             System.out.println("Failed to create project.");
         }
+    }
+
+    private boolean checkProjectClash(Date activeEndDate, Date newStartDate) {
+        if (newStartDate.compareTo(activeEndDate) < 0) {
+            System.out.println("Project application period clash detected");
+            return true;
+        }
+        return false;
+    }
+
+    private Project getActiveProject(HdbManager manager) {
+        List<Project> projects = managerController.viewManagedProjects(manager);
+        LocalDate today = LocalDate.now();
+        Date todayDate = Date.from(today.atStartOfDay(ZoneId.systemDefault()).toInstant());
+
+        if (!projects.isEmpty()) {
+            for (Project p : projects) {
+                if (todayDate.compareTo(p.getAppOpen()) >= 0 && todayDate.compareTo(p.getAppClose()) <= 0) {
+                    return p;
+                }
+            }
+        }
+        return null;
     }
 
     private void handleUpdateProject(HdbManager manager) {
@@ -802,8 +841,15 @@ public class CLIView {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         formatter.setLenient(false);
         try {
-            input = getStringInput("Change application opening date [" + selectedProject.getAppOpen() + "]: ");
+            input = getStringInput("Change application opening date [" + selectedProject.getAppOpen() + "] (use yyyy-MM-dd format): ");
             Date newStartDate = (Date) formatter.parse(input);
+            Project activeProject = getActiveProject(manager);
+            if (activeProject != null) {
+                if (checkProjectClash(activeProject.getAppClose(), newStartDate)) {
+                    System.out.println("Cancelling project update...");
+                    return;
+                }
+            }
             if (newStartDate.compareTo(selectedProject.getAppClose()) < 0) {
                 updates.put("startDate", newStartDate);
             } else {
@@ -814,7 +860,7 @@ public class CLIView {
         }
 
         try {
-            input = getStringInput("Change application closing date [" + selectedProject.getAppClose() + "]: ");
+            input = getStringInput("Change application closing date [" + selectedProject.getAppClose() + "] (use yyyy-MM-dd format): ");
             Date newEndDate = (Date) formatter.parse(input);
             if (newEndDate.compareTo(selectedProject.getAppClose()) < 0) {
                 updates.put("endDate", newEndDate);
