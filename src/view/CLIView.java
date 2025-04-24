@@ -238,12 +238,13 @@ public class CLIView {
         System.out.println("2. View My Projects");
         System.out.println("3. Create New Project");
         System.out.println("4. Update Project");
-        System.out.println("5. Assign Officer to Project");
-        System.out.println("6. Process Application");
-        System.out.println("7. Process Withdrawal Request");
-        System.out.println("8. Generate Report");
-        System.out.println("9. Change Password");
-        System.out.println("10. Logout");
+        System.out.println("5. Delete Project");
+        System.out.println("6. Assign Officer to Project");
+        System.out.println("7. Process Application");
+        System.out.println("8. Process Withdrawal Request");
+        System.out.println("9. Generate Report");
+        System.out.println("10. Change Password");
+        System.out.println("11. Logout");
         System.out.println("--------------------------");
 
         int choice = getIntInput("Enter your choice: ");
@@ -263,21 +264,24 @@ public class CLIView {
                 handleUpdateProject(manager);
                 break;
             case 5:
-                handleAssignOfficer(manager);
+                handleDeleteProject(manager);
                 break;
             case 6:
-                handleProcessApplicationManager(manager);
+                handleAssignOfficer(manager);
                 break;
             case 7:
-                handleProcessWithdrawalManager(manager);
+                handleProcessApplicationManager(manager);
                 break;
             case 8:
-                handleGenerateReport(manager);
+                handleProcessWithdrawalManager(manager);
                 break;
             case 9:
-                if (handleChangePassword()) { return false; } // logout after successful password change
+                handleGenerateReport(manager);
                 break;
             case 10:
+                if (handleChangePassword()) { return false; } // logout after successful password change
+                break;
+            case 11:
                 return false; // Signal logout
             default:
                 displayMessage("Invalid choice. Please try again.");
@@ -875,6 +879,39 @@ public class CLIView {
             }
         } else {
             System.out.println("Update cancelled.");
+        }
+    }
+
+    private void handleDeleteProject(HdbManager manager) {
+        System.out.println("\n--- Delete Project ---");
+        List<Project> projects = managerController.viewManagedProjects(manager);
+        if (projects.isEmpty()) {
+            return;
+        }
+
+        displayProjects(projects);
+        System.out.println("Enter the ID of the project you want to delete:");
+        String projectId = getStringInput("Project ID: ");
+
+        Project selectedProject = null;
+        for (Project project : projects) {
+            if (project.getProjectId().equals(projectId)) {
+                selectedProject = project;
+                break;
+            }
+        }
+
+        if (selectedProject == null) {
+            System.out.println("Invalid project ID. Please try again.");
+            return;
+        }
+
+        String confirm = getStringInput(String.format("Type \"CONFIRM\" to delete project %s: \n", selectedProject.getProjName()));
+        if (!confirm.trim().isEmpty() && confirm.equalsIgnoreCase("CONFIRM")) {
+            managerController.deleteProject(manager, selectedProject);
+        }
+        else {
+            System.out.println("Cancelling project deletion...");
         }
     }
 

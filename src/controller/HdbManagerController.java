@@ -71,6 +71,16 @@ public class HdbManagerController extends UserController {
         return result;
     }
 
+    public void deleteProject(HdbManager manager, Project project) {
+        if (manager == null || project == null) {
+            System.out.println("Error: Manager or project missing.");
+        }
+        else {
+            managerService.deleteProject(manager, project);
+            System.out.println("Project deleted successfully: " + project.getProjName());
+        }
+    }
+
     /**
      * Assign an officer to a project
      * 

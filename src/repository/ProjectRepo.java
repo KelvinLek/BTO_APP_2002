@@ -221,8 +221,8 @@ public class ProjectRepo {
         }
     }
 
-    public void delete(String id) {
-        projectsMap.remove(id);
+    public void delete(Project project) {
+        projectsMap.remove(project.getProjectId());
         saveToCsv();
     }
 }

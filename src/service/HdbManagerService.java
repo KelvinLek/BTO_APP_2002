@@ -553,4 +553,11 @@ public class HdbManagerService extends UserService implements IProjectView, IRep
         
         return reportData;
     }
+
+    public void deleteProject(HdbManager manager, Project project) {
+        if (manager == null || project == null) {
+            throw new IllegalArgumentException("Manager and project details must be provided");
+        }
+        projectRepo.delete(project);
+    }
 }
