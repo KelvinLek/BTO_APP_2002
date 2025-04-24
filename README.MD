@@ -6,6 +6,8 @@ This project is a Command Line Interface (CLI) application developed as part of 
 
 Users log in using their NRIC (User ID) and a password. The system manages user profiles, project listings, applications, enquiries, and reporting based on user roles.
 
+![UML Class Diagram.jpg](UML%20Class%20Diagram.jpg)
+
 ## Features
 
 The system implements functionalities based on three distinct user roles:
