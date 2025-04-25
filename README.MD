@@ -139,4 +139,5 @@ The design emphasizes maintainability, testability, and adherence to object-orie
 * Darren Jong
 * Kelvin Lek
 * Kyla Hong
+* Ong Yi Chen
 * Tsen Fan Loong
