@@ -133,6 +133,10 @@ public class Project {
         this.officers = officers;
     }
 
+    public void removeOfficer(HdbOfficer officer) {
+        this.officers.remove(officer);
+    }
+
     public Boolean getVisible() {
         return visible;
     }

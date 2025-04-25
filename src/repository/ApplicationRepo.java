@@ -134,8 +134,6 @@ public class ApplicationRepo {
     public Application findActiveByApplicantId(String applicantId) {
         return applicationsMap.values().stream()
                 .filter(app -> app.getApplicantId().equals(applicantId))
-                .filter(app -> app.getStatus() == ApplStatus.PENDING || 
-                              app.getStatus() == ApplStatus.SUCCESS)
                 .findFirst()
                 .orElse(null);
     }

@@ -89,13 +89,13 @@ public class HdbManagerController extends UserController {
      * @param projectId The ID of the project to assign to
      * @return true if assignment successful, false otherwise
      */
-    public boolean assignOfficer(HdbManager manager, String officerId, String projectId) {
+    public boolean assignOfficer(HdbManager manager, String officerId, String projectId, boolean confirm) {
         if (manager == null || officerId == null || projectId == null) {
             System.out.println("Error: Manager, officer ID, or project ID information missing.");
             return false;
         }
         
-        boolean result = managerService.assignOfficer(manager, officerId, projectId);
+        boolean result = managerService.assignOfficer(manager, officerId, projectId, confirm);
         
         if (result) {
             System.out.println("Officer assigned to project successfully.");

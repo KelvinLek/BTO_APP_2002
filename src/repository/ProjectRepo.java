@@ -72,8 +72,8 @@ public class ProjectRepo {
 
         try {
             // Debug output
-            System.out.println("Parsing project line: " + line);
-            System.out.println("Parts length: " + parts.length);
+//            System.out.println("Parsing project line: " + line);
+//            System.out.println("Parts length: " + parts.length);
             
             String projectId = parts[0].trim();
             String projectName = parts[1].trim();

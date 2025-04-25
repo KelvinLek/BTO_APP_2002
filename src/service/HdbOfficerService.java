@@ -154,7 +154,7 @@ public class HdbOfficerService extends UserService implements IApplyableService,
         for (Project project : allProjects) {
             // Check if officer is assigned to this project
             if (project.getOfficers() != null && project.getOfficers().stream()
-                    .anyMatch(o -> o.getId().equals(officer.getId()))) {
+                    .anyMatch(o -> o.getId().equals(officer.getId()) && o.getStatus() == OfficerStatus.ASSIGNED)) {
                 assignedProjects.add(project);
             }
             // Also include visible projects
@@ -534,9 +534,9 @@ public class HdbOfficerService extends UserService implements IApplyableService,
             project.setOfficers(new ArrayList<>());
         }
         project.getOfficers().add(officer);
-        
+
         // Set officer status
-        officer.setStatus(OfficerStatus.ASSIGNED);
+        officer.setStatus(OfficerStatus.PENDING);
         
         // Save changes
         projectRepo.update(project);

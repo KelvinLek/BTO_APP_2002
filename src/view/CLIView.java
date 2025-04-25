@@ -504,11 +504,6 @@ public class CLIView {
         
         if (getConfirmation("Are you sure you want to withdraw your application? (Y/N): ")) {
             boolean result = applicantController.requestWithdrawal(applicant);
-            if (result) {
-                System.out.println("Withdrawal request submitted successfully.");
-            } else {
-                System.out.println("Failed to submit withdrawal request.");
-            }
         } else {
             System.out.println("Withdrawal request cancelled.");
         }
@@ -719,11 +714,6 @@ public class CLIView {
         
         if (getConfirmation("Confirm registration for project " + selectedProject.getProjName() + "? (Y/N): ")) {
             boolean result = officerController.registerForProject(officer, selectedProject);
-            if (result) {
-                System.out.println("Registration submitted successfully.");
-            } else {
-                System.out.println("Failed to register for project.");
-            }
         } else {
             System.out.println("Registration cancelled.");
         }
@@ -1110,23 +1100,22 @@ public class CLIView {
      */
     private void handleAssignOfficer(HdbManager manager) {
         System.out.println("\n--- Assign Officer to Project ---");
-        String officerId = getStringInput("Enter Officer ID: ");
+        handleViewManagedProjects(manager);
         String projectId = getStringInput("Enter Project ID: ");
-        
-        if (officerId.trim().isEmpty() || projectId.trim().isEmpty()) {
-            System.out.println("Officer ID and Project ID cannot be empty. Assignment cancelled.");
+        Project project = managerController.viewProjectDetails(projectId, manager);
+
+        if (projectId.trim().isEmpty() || project == null) {
+            System.out.println("Assignment cancelled.");
             return;
         }
-        
-        if (getConfirmation("Confirm assignment of Officer " + officerId + " to Project " + projectId + "? (Y/N): ")) {
-            boolean result = managerController.assignOfficer(manager, officerId, projectId);
-            if (result) {
-                System.out.println("Officer assigned successfully.");
+
+        for (HdbOfficer o : project.getOfficers()) {
+            boolean confirm = getConfirmation("Confirm assignment of Officer " + o.getName() + " to Project " + project.getProjName() + "? (Y/N): ");
+            if (confirm) {
+                boolean result = managerController.assignOfficer(manager, o.getId(), projectId, confirm);
             } else {
-                System.out.println("Failed to assign officer.");
+                System.out.println("Assignment cancelled.");
             }
-        } else {
-            System.out.println("Assignment cancelled.");
         }
     }
 
@@ -1153,11 +1142,11 @@ public class CLIView {
         
         if (getConfirmation("Confirm " + (approve ? "approval" : "rejection") + " of application " + applicationId + "? (Y/N): ")) {
             boolean result = managerController.processApplication(applicationId, manager, approve);
-            if (result) {
-                System.out.println("Application " + (approve ? "approved" : "rejected") + " successfully.");
-            } else {
-                System.out.println("Failed to process application.");
-            }
+//            if (result) {
+//                System.out.println("Application " + (approve ? "approved" : "rejected") + " successfully.");
+//            } else {
+//                System.out.println("Failed to process application.");
+//            }
         } else {
             System.out.println("Processing cancelled.");
         }
@@ -1183,11 +1172,6 @@ public class CLIView {
         if (choice == 1) {
             if (getConfirmation("Confirm approval of withdrawal for application " + applicationId + "? (Y/N): ")) {
                 boolean result = managerController.approveWithdrawal(manager, applicationId);
-                if (result) {
-                    System.out.println("Withdrawal approved successfully.");
-                } else {
-                    System.out.println("Failed to approve withdrawal.");
-                }
             } else {
                 System.out.println("Processing cancelled.");
             }

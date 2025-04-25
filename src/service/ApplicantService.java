@@ -211,7 +211,7 @@ public class ApplicantService extends UserService implements IApplyableService, 
         }
         
         Applicant applicant = (Applicant) user;
-        
+
         try {
             // Find the first eligible flat type
             FlatType eligibleFlatType = null;
@@ -238,7 +238,8 @@ public class ApplicantService extends UserService implements IApplyableService, 
             // Check if applicant already has an active application
             Application existingApp = applicationRepo.findActiveByApplicantId(applicant.getId());
             if (existingApp != null) {
-                return false; // Already has active application
+                if (!(existingApp.getStatus() == ApplStatus.WITHDRAW_APPROVED || existingApp.getStatus() == ApplStatus.REJECT))
+                    return false; // Already has active application
             }
 
             // Create and save the new application
@@ -273,11 +274,11 @@ public class ApplicantService extends UserService implements IApplyableService, 
     public Application getApplicationStatus(User user) {
         if (!(user instanceof Applicant)) return null;
         Applicant applicant = (Applicant) user;
-        
+
         // First check if application is stored in applicant object
-        if (applicant.getApplication() != null) {
-            return applicant.getApplication();
-        }
+//        if (applicant.getApplication() != null) {
+//            return applicant.getApplication();
+//        }
         
         // Otherwise try to find it in the repository
         return applicationRepo.findActiveByApplicantId(applicant.getId());
@@ -507,7 +508,8 @@ public class ApplicantService extends UserService implements IApplyableService, 
         // Check if applicant already has an active application
         Application existingApp = applicationRepo.findActiveByApplicantId(applicant.getId());
         if (existingApp != null) {
-            return false; // Already has an active application
+            if (!(existingApp.getStatus() == ApplStatus.WITHDRAW_APPROVED || existingApp.getStatus() == ApplStatus.REJECT))
+                return false;
         }
 
         return true; // Eligible for a flat and no active application

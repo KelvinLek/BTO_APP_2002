@@ -2,6 +2,7 @@ package repository;
 
 import entity.HdbOfficer;
 import pub_enums.MaritalStatus;
+import pub_enums.OfficerStatus;
 import pub_enums.Role;
 
 import java.io.*;
@@ -74,9 +75,10 @@ public class HdbOfficerRepo {
                         MaritalStatus maritalStatus = MaritalStatus.valueOf(tokens[3].trim().toUpperCase());
                         // tokens[4] is Role (ignored)
                         String password = tokens[5].trim();
-                        // tokens[6] is Status (ignored unless you want to store/use it)
+                        OfficerStatus status = OfficerStatus.valueOf(tokens[6].trim().toUpperCase());
 
                         HdbOfficer officer = new HdbOfficer(name, nric, dob, maritalStatus, password, Role.HDBOFFICER, null, new ArrayList<>(), new ArrayList<>());
+                        officer.setStatus(status);
                         officersMap.put(nric, officer);
                     } catch (ParseException | IllegalArgumentException e) {
                         System.out.println("Skipping invalid Officer CSV row: " + e.getMessage());
@@ -100,7 +102,7 @@ public class HdbOfficerRepo {
                         o.getMaritalStatus().name(),
                         o.getRole().name(),
                         o.getPassword(),
-                        "AVAILABLE")); // Default status if not stored
+                        String.valueOf(o.getStatus())));
                 writer.newLine();
             }
         } catch (IOException e) {

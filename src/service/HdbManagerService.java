@@ -270,7 +270,7 @@ public class HdbManagerService extends UserService implements IProjectView, IRep
      * @param projectId The ID of the project to assign to.
      * @return true if successful, false otherwise.
      */
-    public boolean assignOfficer(HdbManager manager, String officerId, String projectId) {
+    public boolean assignOfficer(HdbManager manager, String officerId, String projectId, boolean confirm) {
         // Find the officer
         Optional<HdbOfficer> optOfficer = officerRepo.findById(officerId);
         if (!optOfficer.isPresent()) {
@@ -303,16 +303,19 @@ public class HdbManagerService extends UserService implements IProjectView, IRep
 
         // Check if officer is already assigned
         for (HdbOfficer existingOfficer : project.getOfficers()) {
-            if (existingOfficer.getId().equals(officerId)) {
+            if (existingOfficer.getId().equals(officerId) && existingOfficer.getStatus() == OfficerStatus.ASSIGNED) {
                 return true; // Already assigned
             }
         }
 
-        // Add officer to project
-        project.getOfficers().add(officer);
-
-        // Update officer status
-        officer.setStatus(OfficerStatus.ASSIGNED);
+        // Add officer to project or Update officer status if rejected
+        if (confirm) {
+            officer.setStatus(OfficerStatus.ASSIGNED);
+        }
+        else {
+            project.removeOfficer(officer);
+            officer.setStatus(OfficerStatus.AVAILABLE);
+        }
 
         // Save changes
         projectRepo.update(project);
