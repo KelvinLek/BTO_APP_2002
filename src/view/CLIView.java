@@ -971,18 +971,20 @@ public class CLIView {
         formatter.setLenient(false);
         try {
             input = getStringInput("Change application opening date [" + selectedProject.getAppOpen() + "] (use yyyy-MM-dd format): ");
-            Date newStartDate = (Date) formatter.parse(input);
-            Project activeProject = getActiveProject(manager);
-            if (activeProject != null) {
-                if (checkProjectClash(activeProject.getAppClose(), newStartDate)) {
-                    System.out.println("Cancelling project update...");
-                    return;
+            if (!input.trim().isEmpty()) {
+                Date newStartDate = (Date) formatter.parse(input);
+                Project activeProject = getActiveProject(manager);
+                if (activeProject != null && activeProject != selectedProject) {
+                    if (checkProjectClash(activeProject.getAppClose(), newStartDate)) {
+                        System.out.println("Cancelling project update...");
+                        return;
+                    }
                 }
-            }
-            if (newStartDate.compareTo(selectedProject.getAppClose()) < 0) {
-                updates.put("startDate", newStartDate);
-            } else {
-                System.out.println("Application opening date must be before application closing date!");
+                if (newStartDate.compareTo(selectedProject.getAppClose()) < 0) {
+                    updates.put("startDate", newStartDate);
+                } else {
+                    System.out.println("Application opening date must be before application closing date!");
+                }
             }
         } catch (ParseException e) {
             System.out.println("Invalid date format. Please use yyyy-MM-dd.");
@@ -990,11 +992,13 @@ public class CLIView {
 
         try {
             input = getStringInput("Change application closing date [" + selectedProject.getAppClose() + "] (use yyyy-MM-dd format): ");
-            Date newEndDate = (Date) formatter.parse(input);
-            if (newEndDate.compareTo(selectedProject.getAppClose()) < 0) {
-                updates.put("endDate", newEndDate);
-            } else {
-                System.out.println("Application closing date must be after application opening date!");
+            if (!input.trim().isEmpty()) {
+                Date newEndDate = (Date) formatter.parse(input);
+                if (newEndDate.compareTo(selectedProject.getAppClose()) < 0) {
+                    updates.put("endDate", newEndDate);
+                } else {
+                    System.out.println("Application closing date must be after application opening date!");
+                }
             }
         } catch (ParseException e) {
             System.out.println("Invalid date format. Please use yyyy-MM-dd.");
