@@ -131,8 +131,7 @@ public class ApplicantRepo {
 
             for (Applicant applicant : applicantsMap.values()) {
                 String dobStr = sdf.format(applicant.getDob());
-                String applicationsStr = applicant.getApplication() != null ?
-                        formatApplications(Collections.singletonList(applicant.getApplication())) : "NULL";
+                String applicationStr = formatApplication(applicant.getApplication());
                 String enquiriesStr = formatEnquiries(applicant.getEnquiries());
 
                 writer.write(String.join("|",
@@ -142,12 +141,11 @@ public class ApplicantRepo {
                         applicant.getMaritalStatus().name(),
                         applicant.getRole().name(),
                         applicant.getPassword(),
-                        applicationsStr,
+                        applicationStr,
                         enquiriesStr
                 ));
                 writer.newLine();
             }
-
         } catch (IOException e) {
             System.out.println("Failed to save applicants: " + e.getMessage());
         }
@@ -190,50 +188,59 @@ public class ApplicantRepo {
     }
 
     private List<Enquiry> parseEnquiries(String enquiriesStr) {
-        if ("NULL".equals(enquiriesStr)) return new ArrayList<>();
-
+        if (enquiriesStr == null || enquiriesStr.trim().isEmpty() || "NULL".equals(enquiriesStr)) {
+            return new ArrayList<>();
+        }
         List<Enquiry> enquiries = new ArrayList<>();
-        String[] enquiryEntries = enquiriesStr.split(";");
+        String[] entries = enquiriesStr.split(";");
 
-        for (String enquiryEntry : enquiryEntries) {
-            String[] enquiryData = enquiryEntry.split(",");
-            if (enquiryData.length >= 2) {
-                String enquiryId = enquiryData[0];
-                String applId = enquiryData[1];
-                String projId = enquiryData[2];
-                String message = enquiryData[3];
-                String reply = enquiryData[4];
-                enquiries.add(new Enquiry(enquiryId, applId, projId, message, reply));
+        for (String entry : entries) {
+            String[] parts = entry.split(",");
+            if (parts.length == 5) {
+                enquiries.add(new Enquiry(
+                        parts[0].trim(), // enquiryId
+                        parts[1].trim(), // applicantId
+                        parts[2].trim(), // projectId
+                        parts[3].trim(), // message
+                        parts[4].trim()  // reply
+                ));
             }
         }
-
         return enquiries;
     }
 
-    private String formatApplications(List<Application> applications) {
-        if (applications == null || applications.isEmpty()) return "";
+    private String formatApplication(Application application) {
+        if (application == null) {
+            return "NULL";
+        }
 
-        return applications.stream()
-                .map(a ->  a.getId() + "," + String.valueOf(a.getStatus()) + ","  + a.getApplicantId() + ","  + a.getProjectId() + "," + a.getFlatType())
-                .collect(Collectors.joining(";"));
+        return String.join(",",
+                application.getId(),
+                application.getStatus().name(),
+                application.getApplicantId(),
+                application.getProjectId(),
+                application.getFlatType()
+        );
     }
 
     private Application parseApplication(String applicationStr) {
-        if ("NULL".equals(applicationStr) || applicationStr == null || applicationStr.trim().isEmpty()) {
+        if (applicationStr == null || applicationStr.trim().isEmpty() || "NULL".equals(applicationStr)) {
             return null;
         }
-
-        String[] applicationData = applicationStr.split(",");
-        if (applicationData.length >= 5) {
-            return new Application(
-                    applicationData[0], // applicationId
-                    ApplStatus.valueOf(applicationData[1]), // status
-                    applicationData[2], // applicantId
-                    applicationData[3], // projectId
-                    applicationData[4]  // flatType
-            );
+        try {
+            String[] parts = applicationStr.split(",");
+            if (parts.length == 5) {
+                return new Application(
+                        parts[0].trim(), // applicationId
+                        ApplStatus.valueOf(parts[1].trim()), // status
+                        parts[2].trim(), // applicantId
+                        parts[3].trim(), // projectId
+                        parts[4].trim()  // flatType
+                );
+            }
+        } catch (IllegalArgumentException e) {
+            System.err.println("Invalid application status in: " + applicationStr);
         }
-
         return null;
     }
 }
