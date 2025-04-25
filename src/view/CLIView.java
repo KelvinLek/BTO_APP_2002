@@ -453,22 +453,7 @@ public class CLIView {
         }
         
         displayProjectsApplicant(projects);
-        int choice = getIntInput("Enter the project number to select (1-" + projects.size() + "):");
-        String projectId = "";
-        if (choice > 0 && choice <= projects.size()) {
-            projectId = projects.get(choice-1).getProjectId();
-        }
-
-//        System.out.println("Enter the ID of the project you want to apply for:");
-//        String projectId = getStringInput("Project ID: ");
-        
-        Project selectedProject = null;
-        for (Project project : projects) {
-            if (project.getProjectId().equals(projectId)) {
-                selectedProject = project;
-                break;
-            }
-        }
+        Project selectedProject = getProjectInput(projects);
         
         if (selectedProject == null) {
             System.out.println("Invalid project selected. Please try again.");
@@ -477,11 +462,6 @@ public class CLIView {
         
         if (getConfirmation("Confirm application for " + selectedProject.getProjName() + "? (Y/N): ")) {
             boolean result = applicantController.applyForProject(applicant, selectedProject);
-//            if (result) {
-//                System.out.println("Application submitted successfully.");
-//            } else {
-//                System.out.println("Application submission failed.");
-//            }
         } else {
             System.out.println("Application cancelled.");
         }
@@ -545,6 +525,16 @@ public class CLIView {
         displayEnquiries(enquiries);
     }
 
+    private Project getProjectInput(List<Project> projects) {
+        int choice = getIntInput("Enter the project number to select (1-" + projects.size() + "):");
+        String projectId = "";
+        if (choice > 0 && choice <= projects.size()) {
+//            projectId = projects.get(choice-1).getProjectId();
+            return projects.get(choice-1);
+        }
+        return null;
+    }
+
     /**
      * Handles the process of an applicant submitting a new enquiry about a project.
      * @param applicant The applicant submitting the enquiry.
@@ -555,18 +545,9 @@ public class CLIView {
         if (projects.isEmpty()) {
             return;
         }
-        
-        displayProjects(projects);
-        System.out.println("Enter the ID of the project you want to enquire about:");
-        String projectId = getStringInput("Project ID: ");
-        
-        Project selectedProject = null;
-        for (Project project : projects) {
-            if (project.getProjectId().equals(projectId)) {
-                selectedProject = project;
-                break;
-            }
-        }
+
+        displayProjectsApplicant(projects);
+        Project selectedProject = getProjectInput(projects);
         
         if (selectedProject == null) {
             System.out.println("Invalid project ID. Please try again.");
@@ -580,11 +561,14 @@ public class CLIView {
         }
         
         Enquiry enquiry = applicantController.submitEnquiry(applicant, selectedProject, message);
-        if (enquiry != null) {
-            System.out.println("Enquiry submitted successfully.");
-        } else {
-            System.out.println("Failed to submit enquiry.");
+    }
+
+    private Enquiry getEnquiryInput(List<Enquiry> enquiries) {
+        int choice = getIntInput("Enter the enquiry number to select (1-" + enquiries.size() + "):");
+        if (choice > 0 && choice <= enquiries.size()) {
+            return enquiries.get(choice-1);
         }
+        return null;
     }
 
     /**
@@ -599,16 +583,7 @@ public class CLIView {
         }
         
         displayEnquiries(enquiries);
-        System.out.println("Enter the ID of the enquiry you want to edit:");
-        String enquiryId = getStringInput("Enquiry ID: ");
-        
-        Enquiry selectedEnquiry = null;
-        for (Enquiry enquiry : enquiries) {
-            if (enquiry.getEnquiryId().equals(enquiryId)) {
-                selectedEnquiry = enquiry;
-                break;
-            }
-        }
+        Enquiry selectedEnquiry = getEnquiryInput(enquiries);
         
         if (selectedEnquiry == null) {
             System.out.println("Invalid enquiry ID. Please try again.");
@@ -626,12 +601,7 @@ public class CLIView {
             return;
         }
         
-        boolean result = applicantController.editEnquiry(enquiryId, applicant, newMessage);
-        if (result) {
-            System.out.println("Enquiry updated successfully.");
-        } else {
-            System.out.println("Failed to update enquiry.");
-        }
+        boolean result = applicantController.editEnquiry(selectedEnquiry.getEnquiryId(), applicant, newMessage);
     }
 
     /**
@@ -646,16 +616,7 @@ public class CLIView {
         }
         
         displayEnquiries(enquiries);
-        System.out.println("Enter the ID of the enquiry you want to delete:");
-        String enquiryId = getStringInput("Enquiry ID: ");
-        
-        Enquiry selectedEnquiry = null;
-        for (Enquiry enquiry : enquiries) {
-            if (enquiry.getEnquiryId().equals(enquiryId)) {
-                selectedEnquiry = enquiry;
-                break;
-            }
-        }
+        Enquiry selectedEnquiry = getEnquiryInput(enquiries);
         
         if (selectedEnquiry == null) {
             System.out.println("Invalid enquiry ID. Please try again.");
@@ -668,12 +629,7 @@ public class CLIView {
         }
         
         if (getConfirmation("Are you sure you want to delete this enquiry? (Y/N): ")) {
-            boolean result = applicantController.deleteEnquiry(enquiryId, applicant);
-            if (result) {
-                System.out.println("Enquiry deleted successfully.");
-            } else {
-                System.out.println("Failed to delete enquiry.");
-            }
+            boolean result = applicantController.deleteEnquiry(selectedEnquiry.getEnquiryId(), applicant);
         } else {
             System.out.println("Deletion cancelled.");
         }
@@ -1180,6 +1136,8 @@ public class CLIView {
      */
     private void handleProcessApplicationManager(HdbManager manager) {
         System.out.println("\n--- Process Application (Manager) ---");
+
+
         String applicationId = getStringInput("Enter the ID of the application to process: ");
         
         if (applicationId.trim().isEmpty()) {
@@ -1212,7 +1170,7 @@ public class CLIView {
     private void handleProcessWithdrawalManager(HdbManager manager) {
         System.out.println("\n--- Process Withdrawal Request (Manager) ---");
         String applicationId = getStringInput("Enter the ID of the application with withdrawal request: ");
-        
+
         if (applicationId.trim().isEmpty()) {
             System.out.println("Application ID cannot be empty. Processing cancelled.");
             return;
@@ -1407,20 +1365,22 @@ public class CLIView {
         }
         
         System.out.println("\n--- Enquiries ---");
-        System.out.println("----------------------------------------------------------------------------------------------------------");
-        System.out.printf("%-20s | %-15s | %-20s | %-30s | %-30s\n", "ID", "Applicant ID", "Project ID", "Message", "Reply");
-        System.out.println("----------------------------------------------------------------------------------------------------------");
-        
+        System.out.println("---------------------------------------------------------------------------------------------------------------------------------");
+        System.out.printf("%-5s | %-36s | %-15s | %-20s | %-30s | %-30s\n", "No.", "ID", "Applicant ID", "Project ID", "Message", "Reply");
+        System.out.println("---------------------------------------------------------------------------------------------------------------------------------");
+
+        int counter = 1;
         for (Enquiry enquiry : enquiries) {
-            System.out.printf("%-20s | %-15s | %-20s | %-30s | %-30s\n",
+            System.out.printf("%-5d | %-36s | %-15s | %-20s | %-30s | %-30s\n",
+                    counter++,
                     enquiry.getEnquiryId(),
                     enquiry.getApplicantId(),
                     enquiry.getProjectId(),
                     truncateString(enquiry.getMessage(), 30),
                     truncateString(enquiry.getReply(), 30));
         }
-        
-        System.out.println("----------------------------------------------------------------------------------------------------------");
+
+        System.out.println("---------------------------------------------------------------------------------------------------------------------------------");
     }
     /**
      * Truncates a string to a maximum length, adding ellipsis if truncated.
