@@ -151,8 +151,14 @@ public class ApplicantService extends UserService implements IApplyableService, 
 
         for (Project project : allProjects) {
             // Check project visibility and application period
-            if (project.isVisible() && project.getAppOpen() != null && project.getAppClose() != null &&
-                    !today.before(project.getAppOpen()) && !today.after(project.getAppClose())) {
+            boolean applicantAlreadyApplied = false;
+            try {
+                applicantAlreadyApplied = Objects.equals(applicant.getApplication().getProjectId(), project.getProjectId());
+            } catch (Exception e) {
+                System.out.println("Applicant no applications");
+            }
+            if ((project.isVisible() && project.getAppOpen() != null && project.getAppClose() != null &&
+                    !today.before(project.getAppOpen()) && !today.after(project.getAppClose())) || applicantAlreadyApplied) {
 
                 // Check if applicant is eligible for any flat type in this project
                 boolean eligibleForAnyFlat = false;
@@ -241,7 +247,7 @@ public class ApplicantService extends UserService implements IApplyableService, 
                     ApplStatus.PENDING,
                     applicant.getId(),
                     project.getProjectId(),
-                    eligibleFlatType.name()
+                    eligibleFlatType.name() // default to first available
             );
 
             applicationRepo.add(newApplication);
