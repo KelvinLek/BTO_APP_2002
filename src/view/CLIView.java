@@ -453,8 +453,14 @@ public class CLIView {
         }
         
         displayProjectsApplicant(projects);
-        System.out.println("Enter the ID of the project you want to apply for:");
-        String projectId = getStringInput("Project ID: ");
+        int choice = getIntInput("Enter the project number to select (1-" + projects.size() + "):");
+        String projectId = "";
+        if (choice > 0 && choice <= projects.size()) {
+            projectId = projects.get(choice-1).getProjectId();
+        }
+
+//        System.out.println("Enter the ID of the project you want to apply for:");
+//        String projectId = getStringInput("Project ID: ");
         
         Project selectedProject = null;
         for (Project project : projects) {
@@ -465,7 +471,7 @@ public class CLIView {
         }
         
         if (selectedProject == null) {
-            System.out.println("Invalid project ID. Please try again.");
+            System.out.println("Invalid project selected. Please try again.");
             return;
         }
         
@@ -1308,20 +1314,22 @@ public class CLIView {
             return;
         }
 
-        System.out.println("\n--- Projects ---");
-        System.out.println("---------------------------------------------------------------------------------------------------------------------------------");
-        System.out.printf("%-10s | %-20s | %-15s | %-10s | %-12s | %-10s | %-12s%n",
-                "ID", "Name", "Neighbourhood", "2-Room", "2-Room Price", "3-Room", "3-Room Price");
-        System.out.println("---------------------------------------------------------------------------------------------------------------------------------");
-        List<Flat> flatList = new ArrayList<>();
+        System.out.println("\n--- Available Projects ---");
+        System.out.println("=================================================================================================================================");
+        System.out.printf("%-5s | %-20s | %-15s | %-10s | %-12s | %-10s | %-12s%n",
+                "No.", "Name", "Neighbourhood", "2-Room", "2-Room Price", "3-Room", "3-Room Price");
+        System.out.println("=================================================================================================================================");
+
+        int projectNumber = 1;
         for (Project project : projects) {
-            flatList = project.getFlats();
+            List<Flat> flatList = project.getFlats();
             String twoRoomAvail = flatList.getFirst().getTotal() > 0 ? "Available" : "Unavailable";
             double twoRoomPrice = flatList.getFirst().getPrice();
             String threeRoomAvail = flatList.getLast().getTotal() > 0 ? "Available" : "Unavailable";
             double threeRoomPrice = flatList.getLast().getPrice();
-            System.out.printf("%-10s | %-20s | %-15s | %-10s | $%-11.0f | %-10s | $%-11.0f%n",
-                    project.getProjectId(),
+
+            System.out.printf("%-5d | %-20s | %-15s | %-10s | $%-11.0f | %-10s | $%-11.0f%n",
+                    projectNumber++,
                     project.getProjName(),
                     project.getNeighbourhood(),
                     twoRoomAvail,
@@ -1330,7 +1338,7 @@ public class CLIView {
                     threeRoomPrice);
         }
 
-        System.out.println("---------------------------------------------------------------------------------------------------------------------------------");
+        System.out.println("=================================================================================================================================");
     }
 
     /**
